@@ -6,6 +6,7 @@ import { STATUS_OPTIONS } from "../../lib/constants";
 import AssigneeDropdown from "@/components/common/AssigneeDropdown";
 import { STATUS_OPTIONS } from '../../lib/constants';
 
+import AssigneeDropdown from "@/components/common/AssigneeDropdown";
 import TagsDropdown from "@/components/common/TagsDropdown";
 
 const NewIdeaForm = ({ newIdea, setNewIdea, teamMembers, selectedColumn }) => {
