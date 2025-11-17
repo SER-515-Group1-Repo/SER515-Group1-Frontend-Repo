@@ -1,7 +1,6 @@
 import { Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-
 import { useAuth } from "@/context/AuthContext";
 import { ActionPopover } from "@/components/common/ActionPopover";
 
@@ -26,7 +25,9 @@ export function Header({ onCreateIdeaClick }) {
       <div className="flex items-center gap-2 cursor-pointer">
         <h1 className="text-xl font-semibold">Project Board</h1>
       </div>
-      <div className="flex items-center space-x-2">
+
+      <div className="flex items-center space-x-4">
+        {}
         <Button onClick={() => onCreateIdeaClick("Proposed")}>
           + Create Idea
         </Button>

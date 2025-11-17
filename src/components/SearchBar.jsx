@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import FilterDropdown from "@/components/forms/FilterDropdown";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { debounce } from "@/lib/utils";
@@ -56,6 +57,8 @@ export function SearchBar({ onFilter }) {
           onChange={handleInputChange}
         />
       </div>
+
+      <FilterDropdown data={data} value={value} onApply={onFiltersChange} />
     </div>
   );
 }

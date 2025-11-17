@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { STATUS_OPTIONS } from "../../lib/constants";
@@ -17,24 +17,39 @@ const ALL_TAGS = [
 export function applyFilters(columns = [], filters) {
   if (!filters) return columns;
 
-  const { text, statuses, assignees, tags } = filters;
+  const { text, statuses, assignees, tags, startDate, endDate } = filters;
   const query = (text || "").trim().toLowerCase();
+  const start = startDate ? new Date(startDate) : null;
+  const end = endDate ? new Date(endDate) : null;
+  if (end) end.setHours(23, 59, 59, 999);
 
   const taskPasses = (task = {}) => {
     const t = (task.title || "").toLowerCase();
     const d = (task.description || "").toLowerCase();
     const taskTags = Array.isArray(task.tags) ? task.tags : [];
-    const taskAssignee = task.assignee ?? task.assigne ?? ""; // <-- handles backend 'assigne'
+    const taskAssignee = task.assignee ?? task.assigne ?? "";
+
+    const rawDate =
+      task.created_at ||
+      task.createdAt ||
+      task.updated_at ||
+      task.updatedAt ||
+      task.date ||
+      task.due_date ||
+      null;
+    const taskDate = rawDate ? new Date(rawDate) : null;
 
     if (query && !(t.includes(query) || d.includes(query))) return false;
     if (assignees?.size && !assignees.has(String(taskAssignee))) return false;
     if (tags?.size && ![...tags].every((tg) => taskTags.includes(tg)))
       return false;
+    if (start && taskDate && taskDate < start) return false;
+    if (end && taskDate && taskDate > end) return false;
 
     return true;
   };
 
-  return columns.map((col) => {
+  return (columns || []).map((col) => {
     const includeCol = !statuses?.size || statuses.has(col.title);
     return {
       ...col,
@@ -43,32 +58,41 @@ export function applyFilters(columns = [], filters) {
   });
 }
 
-export default function FilterDropdown({ data = [], onApply }) {
+export default function NewFilterDropdown({
+  data = [],
+  value = null,
+  onApply,
+}) {
   const [open, setOpen] = useState(false);
+
   const [text, setText] = useState("");
-  const [statuses, setStatuses] = useState(new Set()); // Set of status names (strings)
-  const [assignees, setAssignees] = useState(new Set()); // Set of assignee names (strings)
-  const [tags, setTags] = useState(new Set()); // Set of tag strings
+  const [statuses, setStatuses] = useState(new Set());
+  const [assignees, setAssignees] = useState(new Set());
+  const [tags, setTags] = useState(new Set());
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
-  // (Optional) Derived options from live data; not used in UI below but kept for future
-  const { assigneeOptions, tagOptions } = useMemo(() => {
-    const a = new Set();
-    const t = new Set();
-    data.forEach((col) => {
-      (col.tasks || []).forEach((task) => {
-        const asg = task?.assignee ?? task?.assigne;
-        if (asg) a.add(String(asg));
-        (Array.isArray(task?.tags) ? task.tags : []).forEach(
-          (tg) => tg && t.add(String(tg))
-        );
-      });
-    });
-    return { assigneeOptions: [...a].sort(), tagOptions: [...t].sort() };
-  }, [data]);
+  useEffect(() => {
+    if (!value) {
+      setText("");
+      setStatuses(new Set());
+      setAssignees(new Set());
+      setTags(new Set());
+      setStartDate("");
+      setEndDate("");
+      return;
+    }
+    setText(value.text || "");
+    setStatuses(new Set(value.statuses || []));
+    setAssignees(new Set(value.assignees || []));
+    setTags(new Set(value.tags || []));
+    setStartDate(value.startDate || "");
+    setEndDate(value.endDate || "");
+  }, [value]);
 
-  const toggle = (setObj, value) => {
+  const toggle = (setObj, v) => {
     const next = new Set(setObj);
-    next.has(value) ? next.delete(value) : next.add(value);
+    next.has(v) ? next.delete(v) : next.add(v);
     return next;
   };
 
@@ -77,38 +101,58 @@ export default function FilterDropdown({ data = [], onApply }) {
     setStatuses(new Set());
     setAssignees(new Set());
     setTags(new Set());
-    onApply?.({
-      text: "",
-      statuses: new Set(),
-      assignees: new Set(),
-      tags: new Set(),
-    });
-  };
+    setStartDate("");
+    setEndDate("");
 
-  const apply = () => {
-    onApply?.({ text, statuses, assignees, tags });
+    onApply?.(null);
+
     setOpen(false);
   };
 
-  // Close on outside click + Esc
+  const apply = () => {
+    onApply?.({ text, statuses, assignees, tags, startDate, endDate });
+    setOpen(false);
+  };
+
+  const summary = useMemo(() => {
+    const parts = [];
+    if (text) parts.push(`“${text}”`);
+    if (statuses.size) parts.push(`${statuses.size} status`);
+    if (assignees.size) parts.push(`${assignees.size} assignee`);
+    if (tags.size) parts.push(`${tags.size} tag`);
+    if (startDate || endDate)
+      parts.push(
+        `date${startDate ? ` ≥ ${startDate}` : ""}${
+          endDate ? ` ≤ ${endDate}` : ""
+        }`
+      );
+    return parts;
+  }, [text, statuses, assignees, tags, startDate, endDate]);
+
+  const activeCount = useMemo(() => {
+    let c = 0;
+    if (text) c++;
+    if (statuses.size) c++;
+    if (assignees.size) c++;
+    if (tags.size) c++;
+    if (startDate || endDate) c++;
+    return c;
+  }, [text, statuses, assignees, tags, startDate, endDate]);
+
   const panelRef = useRef(null);
   useEffect(() => {
-    function handleClickOutside(e) {
-      if (panelRef.current && !panelRef.current.contains(e.target)) {
+    const onDoc = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target))
         setOpen(false);
-      }
-    }
-    function handleEsc(e) {
-      if (e.key === "Escape") setOpen(false);
-    }
-
+    };
+    const onEsc = (e) => e.key === "Escape" && setOpen(false);
     if (open) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("keydown", handleEsc);
+      document.addEventListener("mousedown", onDoc);
+      document.addEventListener("keydown", onEsc);
     }
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleEsc);
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
     };
   }, [open]);
 
@@ -119,26 +163,30 @@ export default function FilterDropdown({ data = [], onApply }) {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
       >
-        Filter
+        {activeCount > 0 ? `Filter (${activeCount})` : "Filter"}
       </Button>
 
       {open && (
         <div
-          className="absolute right-0 z-50 mt-2 w-[360px] origin-top-right rounded-2xl border bg-white p-4 shadow-xl"
+          className="absolute right-0 z-50 mt-2 w-[380px] origin-top-right rounded-2xl border bg-white p-4 shadow-xl"
           role="dialog"
           aria-label="Filter options"
         >
-          {/* Text search */}
-          <div className="mb-4 space-y-2">
-            <div className="text-xs font-semibold text-gray-500">Search</div>
-            <Input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Title or description…"
-            />
-          </div>
+          {/* Summary chips */}
+          {summary.length > 0 && (
+            <div className="mb-3 flex flex-wrap gap-2">
+              {summary.map((s, i) => (
+                <span
+                  key={`${s}-${i}`}
+                  className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
+                >
+                  {s}
+                </span>
+              ))}
+            </div>
+          )}
 
-          {/* Statuses */}
+          {/* Status */}
           <div className="mb-4">
             <div className="mb-2 text-xs font-semibold text-gray-500">
               Status
@@ -153,7 +201,7 @@ export default function FilterDropdown({ data = [], onApply }) {
                     type="checkbox"
                     className="h-4 w-4"
                     checked={statuses.has(s.name)}
-                    onChange={() => setStatuses((prev) => toggle(prev, s.name))}
+                    onChange={() => setStatuses((p) => toggle(p, s.name))}
                   />
                   <span className="text-sm">{s.name}</span>
                 </label>
@@ -176,9 +224,7 @@ export default function FilterDropdown({ data = [], onApply }) {
                     type="checkbox"
                     className="h-4 w-4"
                     checked={assignees.has(s.name)}
-                    onChange={() =>
-                      setAssignees((prev) => toggle(prev, s.name))
-                    }
+                    onChange={() => setAssignees((p) => toggle(p, s.name))}
                   />
                   <span className="text-sm">{s.name}</span>
                 </label>
@@ -199,11 +245,35 @@ export default function FilterDropdown({ data = [], onApply }) {
                     type="checkbox"
                     className="h-4 w-4"
                     checked={tags.has(s)}
-                    onChange={() => setTags((prev) => toggle(prev, s))}
+                    onChange={() => setTags((p) => toggle(p, s))}
                   />
                   <span className="text-sm">{s}</span>
                 </label>
               ))}
+            </div>
+          </div>
+
+          {/* Date Range */}
+          <div className="mb-4">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">Start</span>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  max={endDate || undefined}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs text-muted-foreground">End</span>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  min={startDate || undefined}
+                />
+              </div>
             </div>
           </div>
 

@@ -17,6 +17,7 @@ import EditStoryForm from "@/components/forms/EditStoryForm";
 
 import apiClient from "@/api/axios";
 
+import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
 
@@ -46,6 +47,22 @@ const initialColumns = [
     dotColor: "bg-green-500",
     tasks: [],
   },
+  { title: "Needs Refinement", dotColor: "bg-blue-500", tasks: [
+      { id: "4", title: "API Documentation", description: "Create comprehensive API documentation for all endpoints.", assignee: "Akshat", status: "Needs Refinement", tags: ["Backend", "Research"] },
+      { id: "5", title: "UI Component Library", description: "Build reusable UI components for the dashboard.", assignee: "Balaji", status: "Needs Refinement", tags: ["Frontend", "UI/UX"] },
+    ]},
+  { title: "In Refinement", dotColor: "bg-yellow-500", tasks: [
+      { id: "6", title: "Task Management Features", description: "Implement drag-and-drop functionality for task cards.", assignee: "Rahul", status: "In Refinement", tags: ["Frontend", "Testing"] },
+    ]},
+  { title: "Ready To Commit", dotColor: "bg-purple-500", tasks: [
+      { id: "7", title: "Code Review System", description: "Set up automated code review process with GitHub Actions.", assignee: "Charith", status: "Ready To Commit", tags: ["DevOps", "Testing"] },
+      { id: "8", title: "Error Handling", description: "Implement comprehensive error handling across the application.", assignee: "Akshat", status: "Ready To Commit", tags: ["Backend", "Bug"] },
+    ]},
+  { title: "Sprint Ready", dotColor: "bg-green-500", tasks: [
+      { id: "9", title: "Initial UI Mockups", description: "Created wireframes and basic mockups for the dashboard.", assignee: "Balaji", status: "Sprint Ready", tags: ["Frontend", "Research"] },
+      { id: "10", title: "Database Connection", description: "Established connection between backend and PostgreSQL database.", assignee: "Rahul", status: "Sprint Ready", tags: ["Backend", "Database"] },
+      { id: "11", title: "Frontend Routing", description: "Implemented React Router for navigation between pages.", assignee: "Charith", status: "Sprint Ready", tags: ["Frontend", "Refactor"] },
+    ]},
 ];
 
 const dummyTeamMembers = [
@@ -55,6 +72,45 @@ const dummyTeamMembers = [
   { id: 4, name: "Rahul", role: "Developer" },
   { id: 5, name: "Vishesh", role: "Developer" },
 ];
+
+const FILTER_LS_KEY = "board_filters_v1";
+
+const filtersToPlain = (f) =>
+  !f ? null : {
+    text: f.text || "",
+    statuses: [...(f.statuses || new Set())],
+    assignees: [...(f.assignees || new Set())],
+    tags: [...(f.tags || new Set())],
+    startDate: f.startDate || "",
+    endDate: f.endDate || "",
+  };
+
+const plainToFilters = (p) =>
+  !p ? null : {
+    text: p.text || "",
+    statuses: new Set(p.statuses || []),
+    assignees: new Set(p.assignees || []),
+    tags: new Set(p.tags || []),
+    startDate: p.startDate || "",
+    endDate: p.endDate || "",
+  };
+
+const saveFiltersLS = (f) => { try { localStorage.setItem(FILTER_LS_KEY, JSON.stringify(filtersToPlain(f))); } catch {} };
+const loadFiltersLS = () => { try { const s = localStorage.getItem(FILTER_LS_KEY); return s ? plainToFilters(JSON.parse(s)) : null; } catch { return null; } };
+
+const decodeUnderscore = (v) => (v ? v.replace(/_/g, " ") : "");
+const queryToFilters = (search) => {
+  const q = new URLSearchParams(search);
+  const split = (k) => (q.get(k)?.split(",").map((x) => decodeUnderscore(x)).filter(Boolean)) || [];
+  const text = decodeUnderscore(q.get("q") || "");
+  const statuses = new Set(split("status"));
+  const assignees = new Set(split("assignees"));
+  const tags = new Set(split("tags"));
+  const startDate = q.get("start") || "";
+  const endDate = q.get("end") || "";
+  if (!text && !statuses.size && !assignees.size && !tags.size && !startDate && !endDate) return null;
+  return { text, statuses, assignees, tags, startDate, endDate };
+};
 
 const DashboardPage = () => {
   const [teamMembers, setTeamMembers] = useState([]);
@@ -74,6 +130,7 @@ const DashboardPage = () => {
     acceptanceCriteria: [],
     storyPoints: null,
   });
+  const [filters, setFilters] = useState(null);
 
   // NEW: Edit Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -297,6 +354,45 @@ const DashboardPage = () => {
       </Button>
     </>
   );
+const handleFiltersChange = async (f) => {
+  const isEmpty =
+    !f ||
+    (!f.text?.trim() &&
+      !(f.statuses && f.statuses.size) &&
+      !(f.assignees && f.assignees.size) &&
+      !(f.tags && f.tags.size) &&
+      !f.startDate &&
+      !f.endDate);
+
+  if (isEmpty) {
+    window.history.replaceState(null, "", window.location.pathname);
+
+    try { localStorage.removeItem("board_filters_v1"); } catch {}
+
+    setFilters(null);
+
+    await fetchIdeas();
+    return;
+  }
+
+  const q = new URLSearchParams();
+  if (f.text) q.set("q", f.text.replace(/\s+/g, "_"));
+  if (f.statuses?.size) q.set("status", [...f.statuses].join(",").replace(/\s+/g, "_"));
+  if (f.assignees?.size) q.set("assignees", [...f.assignees].join(",").replace(/\s+/g, "_"));
+  if (f.tags?.size) q.set("tags", [...f.tags].join(",").replace(/\s+/g, "_"));
+  if (f.startDate) q.set("start", f.startDate);
+  if (f.endDate) q.set("end", f.endDate);
+
+  const queryString = q.toString().replace(/\+/g, "_");
+  const newUrl = `${window.location.pathname}?${queryString}`;
+  window.history.replaceState(null, "", newUrl);
+
+  setFilters(f);
+
+  await fetchIdeas();
+};
+
+
 
   const isFormValid =
     newIdea.title.trim() !== "" &&
@@ -312,6 +408,22 @@ const DashboardPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // fetchIdeas is stable, doesn't need to be in deps
+
+  useEffect(() => {
+    const fromURL = queryToFilters(window.location.search);
+    if (fromURL) setFilters(fromURL);
+    else {
+      const fromLS = loadFiltersLS();
+      if (fromLS) setFilters(fromLS);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!filters) return;
+    saveFiltersLS(filters);
+  }, [filters]);
+
+  const filteredColumns = applyFilters(columnData, filters);
 
   return (
     <div className="flex flex-col h-screen bg-white">
@@ -356,7 +468,12 @@ const DashboardPage = () => {
           onClose={() => setIsModalOpen(false)}
           title="Create New Idea"
           description="Fill in the details for your new idea. Click save when you're done."
-          footer={<IdeaFormFooter />}
+          footer={
+            <>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+              <Button onClick={handleSaveIdea} disabled={!isFormValid}>Save Idea</Button>
+            </>
+          }
         >
           <NewIdeaForm
             newIdea={newIdea}
