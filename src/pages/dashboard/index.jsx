@@ -188,18 +188,11 @@ const DashboardPage = () => {
     }
   };
 
-  // NEW: Handle Save Edit
   const handleSaveEdit = async (updatedTask) => {
     try {
-      const token = localStorage.getItem("authToken");
       await apiClient.put(
         `${import.meta.env.VITE_BASE_URL}/stories/${updatedTask.id}`,
-        updatedTask,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        updatedTask
       );
 
       // Update local state
