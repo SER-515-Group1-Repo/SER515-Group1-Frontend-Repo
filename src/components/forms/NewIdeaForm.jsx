@@ -9,6 +9,14 @@ import TagsDropdown from "@/components/common/TagsDropdown";
 const NewIdeaForm = ({ newIdea, setNewIdea, teamMembers, selectedColumn }) => {
   teamMembers = [...teamMembers];
 
+  const statusOptions = [
+    "Proposed",
+    "Needs Refinement",
+    "In Refinement",
+    "Ready To Commit",
+    "Sprint Ready",
+  ];
+
   return (
     <div className="grid gap-4">
       <div className="grid grid-cols-4 items-center gap-4">
