@@ -17,14 +17,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     tags: [],
   });
 
-  const statusOptions = [
-    "Proposed",
-    "Needs Refinement",
-    "In Refinement",
-    "Ready To Commit",
-    "Sprint Ready",
-  ];
-
   const [activity, setActivity] = useState([]);
   const [newComment, setNewComment] = useState("");
 
