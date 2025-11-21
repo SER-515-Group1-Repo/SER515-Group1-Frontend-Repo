@@ -22,7 +22,6 @@ export function TaskColumn({
   const handleDrop = (e) => {
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "";
-
     const taskData = e.dataTransfer.getData("application/json");
     if (taskData && onDrop) {
       const task = JSON.parse(taskData);
