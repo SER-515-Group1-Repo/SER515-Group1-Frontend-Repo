@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
-import { ChevronDown } from "lucide-react"; // ⬅️ Dropdown icon
+import { ChevronDown } from "lucide-react";
 
 const TagsDropdown = ({ newIdea, setNewIdea }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,6 +14,7 @@ const TagsDropdown = ({ newIdea, setNewIdea }) => {
     "Bug",
     "Testing",
   ];
+
   const selected = Array.isArray(newIdea.tags) ? newIdea.tags : [];
   const hasSelection = selected.length > 0;
 
@@ -26,7 +27,9 @@ const TagsDropdown = ({ newIdea, setNewIdea }) => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setIsOpen(false);
+      if (ref.current && !ref.current.contains(e.target)) {
+        setIsOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -39,24 +42,20 @@ const TagsDropdown = ({ newIdea, setNewIdea }) => {
       </Label>
 
       <div className="col-span-3 relative" ref={ref}>
-        {/* Dropdown button */}
+        {/* Main Button */}
         <button
           type="button"
           id="tags"
           onClick={() => setIsOpen((o) => !o)}
           className={`flex items-center justify-between h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-left text-sm
                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-                      ${
-                        hasSelection
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }`}
+                      ${hasSelection ? "text-foreground" : "text-muted-foreground"}`}
         >
           <span className="truncate">
             {hasSelection ? selected.join(", ") : "Select one or more tags"}
           </span>
 
-          {/* Dropdown arrow icon */}
+          {/* Dropdown Arrow Icon */}
           <ChevronDown
             className={`ml-2 h-4 w-4 transition-transform duration-200 ${
               isOpen ? "rotate-180" : "rotate-0"
@@ -64,6 +63,7 @@ const TagsDropdown = ({ newIdea, setNewIdea }) => {
           />
         </button>
 
+        {/* Dropdown Panel */}
         {isOpen && (
           <div className="absolute z-50 mt-2 w-full rounded-md border bg-popover p-2 shadow-md">
             <div className="max-h-56 overflow-auto pr-1">
@@ -86,6 +86,7 @@ const TagsDropdown = ({ newIdea, setNewIdea }) => {
               })}
             </div>
 
+            {/* Footer buttons */}
             <div className="mt-2 flex items-center justify-between gap-2">
               <button
                 type="button"

@@ -41,24 +41,37 @@ export function TaskColumn({
           <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
           <h2 className="font-semibold text-foreground">{title}</h2>
         </div>
+
         <div className="flex items-center">
+          {}
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onAddTask && onAddTask(title)}
+            title="Add new idea"
           >
             <Plus className="w-4 h-4" />
           </Button>
+
           <Button variant="ghost" size="icon">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </div>
       </div>
-
       <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
-        {tasks.map((task, index) => (
-          <TaskCard key={`${task.id}-${index}`} task={task} onEdit={onEdit} />
-        ))}
+        {tasks.length > 0 ? (
+          tasks.map((task, index) => (
+            <TaskCard
+              key={`${task.id ?? index}-${index}`}
+              task={task}
+              onEdit={onEdit}
+            />
+          ))
+        ) : (
+          <div className="text-sm text-gray-400 text-center mt-4">
+            No tasks yet.
+          </div>
+        )}
       </div>
     </div>
   );
