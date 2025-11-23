@@ -1,6 +1,6 @@
 import { Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TaskCard } from "@/components/task/TaskCard";
+import { TaskCard } from "@/components/taskComponent/TaskCard";
 
 export function TaskColumn({
   title,
