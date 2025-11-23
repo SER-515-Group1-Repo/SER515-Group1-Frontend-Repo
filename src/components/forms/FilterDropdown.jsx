@@ -43,6 +43,8 @@ export function applyFilters(columns = [], filters) {
     if (assignees?.size && !assignees.has(String(taskAssignee))) return false;
     if (tags?.size && ![...tags].every((tg) => taskTags.includes(tg)))
       return false;
+
+    if ((start || end) && !taskDate) return false;
     if (start && taskDate && taskDate < start) return false;
     if (end && taskDate && taskDate > end) return false;
 
@@ -194,16 +196,16 @@ export default function NewFilterDropdown({
             <div className="grid grid-cols-2 gap-2">
               {STATUS_OPTIONS.map((s) => (
                 <label
-                  key={s.id}
+                  key={s}
                   className="flex cursor-pointer items-center gap-1 rounded-xl border p-2 hover:bg-gray-100"
                 >
                   <input
                     type="checkbox"
                     className="h-4 w-4"
-                    checked={statuses.has(s.name)}
-                    onChange={() => setStatuses((p) => toggle(p, s.name))}
+                    checked={statuses.has(s)}
+                    onChange={() => setStatuses((p) => toggle(p, s))}
                   />
-                  <span className="text-sm">{s.name}</span>
+                  <span className="text-sm">{s}</span>
                 </label>
               ))}
             </div>
@@ -217,16 +219,16 @@ export default function NewFilterDropdown({
             <div className="grid grid-cols-2 gap-2">
               {ALL_ASSIGNEE.map((s) => (
                 <label
-                  key={s.id}
+                  key={s}
                   className="flex cursor-pointer items-center gap-1 rounded-xl border p-2 hover:bg-gray-100"
                 >
                   <input
                     type="checkbox"
                     className="h-4 w-4"
-                    checked={assignees.has(s.name)}
-                    onChange={() => setAssignees((p) => toggle(p, s.name))}
+                    checked={assignees.has(s)}
+                    onChange={() => setAssignees((p) => toggle(p, s))}
                   />
-                  <span className="text-sm">{s.name}</span>
+                  <span className="text-sm">{s}</span>
                 </label>
               ))}
             </div>

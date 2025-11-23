@@ -47,22 +47,6 @@ const initialColumns = [
     dotColor: "bg-green-500",
     tasks: [],
   },
-  { title: "Needs Refinement", dotColor: "bg-blue-500", tasks: [
-      { id: "4", title: "API Documentation", description: "Create comprehensive API documentation for all endpoints.", assignee: "Akshat", status: "Needs Refinement", tags: ["Backend", "Research"] },
-      { id: "5", title: "UI Component Library", description: "Build reusable UI components for the dashboard.", assignee: "Balaji", status: "Needs Refinement", tags: ["Frontend", "UI/UX"] },
-    ]},
-  { title: "In Refinement", dotColor: "bg-yellow-500", tasks: [
-      { id: "6", title: "Task Management Features", description: "Implement drag-and-drop functionality for task cards.", assignee: "Rahul", status: "In Refinement", tags: ["Frontend", "Testing"] },
-    ]},
-  { title: "Ready To Commit", dotColor: "bg-purple-500", tasks: [
-      { id: "7", title: "Code Review System", description: "Set up automated code review process with GitHub Actions.", assignee: "Charith", status: "Ready To Commit", tags: ["DevOps", "Testing"] },
-      { id: "8", title: "Error Handling", description: "Implement comprehensive error handling across the application.", assignee: "Akshat", status: "Ready To Commit", tags: ["Backend", "Bug"] },
-    ]},
-  { title: "Sprint Ready", dotColor: "bg-green-500", tasks: [
-      { id: "9", title: "Initial UI Mockups", description: "Created wireframes and basic mockups for the dashboard.", assignee: "Balaji", status: "Sprint Ready", tags: ["Frontend", "Research"] },
-      { id: "10", title: "Database Connection", description: "Established connection between backend and PostgreSQL database.", assignee: "Rahul", status: "Sprint Ready", tags: ["Backend", "Database"] },
-      { id: "11", title: "Frontend Routing", description: "Implemented React Router for navigation between pages.", assignee: "Charith", status: "Sprint Ready", tags: ["Frontend", "Refactor"] },
-    ]},
 ];
 
 const dummyTeamMembers = [
@@ -132,7 +116,13 @@ const DashboardPage = () => {
   });
   const [filters, setFilters] = useState(null);
 
-  // NEW: Edit Modal State
+  const nextTaskId = useRef(
+    Math.max(
+      ...initialColumns.flatMap(col => col.tasks.map(t => parseInt(t.id, 10) || 0)),
+      0
+    ) + 1
+  );
+
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
 
@@ -165,9 +155,14 @@ const DashboardPage = () => {
         }
       );
 
+      const userTask = {
+        ...data?.story,
+        id: String(nextTaskId.current++),
+      };
+
       const updatedColumns = originalColumnData.map((col) =>
         col.title === (newIdea.status || selectedColumn)
-          ? { ...col, tasks: [...col.tasks, data?.story] }
+          ? { ...col, tasks: [...col.tasks, userTask] }
           : col
       );
       setOriginalColumnData(updatedColumns);
@@ -196,15 +191,13 @@ const DashboardPage = () => {
     }
   };
 
-  // NEW: Handle Edit Task
   const handleEditTask = (task) => {
     setSelectedTask(task);
     setEditModalOpen(true);
   };
 
-  // NEW: Handle Drop Task (Drag and Drop to change status)
   const handleDropTask = async (task, newStatus) => {
-    if (task.status === newStatus) return; // No change needed
+    if (task.status === newStatus) return; 
 
     try {
       const token = localStorage.getItem("authToken");
@@ -222,7 +215,6 @@ const DashboardPage = () => {
         }
       );
 
-      // Update local state
       setColumnData((prevColumns) => {
         const newBoard = prevColumns.map((col) => ({
           ...col,
@@ -252,7 +244,6 @@ const DashboardPage = () => {
         updatedTask
       );
 
-      // Update local state
       setColumnData((prevColumns) => {
         return prevColumns.map((col) => ({
           ...col,
@@ -298,8 +289,6 @@ const DashboardPage = () => {
 
         const newBoard = JSON.parse(JSON.stringify(initialColumns));
 
-        // Backend already filters the data, so use it directly
-        // No need for client-side filtering as backend handles both ID and title searches
         data.forEach((idea) => {
           const column = newBoard.find((col) => col.title === idea.status);
           if (column) {
@@ -318,11 +307,9 @@ const DashboardPage = () => {
             err.message ||
             "Failed to load ideas. Please try again later."
         );
-        // If search fails, fall back to original data
         if (searchTerm && searchTerm.trim() !== "") {
           setColumnData(originalColumnData);
         } else {
-          // If initial load fails, show empty columns
           setColumnData(initialColumns);
         }
       } finally {
@@ -334,7 +321,7 @@ const DashboardPage = () => {
 
   const handleFilter = useCallback(
     (searchTerm) => {
-      fetchIdeas(searchTerm, true); // true indicates it's a user-initiated search
+      fetchIdeas(searchTerm, true); 
     },
     [fetchIdeas]
   );
@@ -355,41 +342,49 @@ const DashboardPage = () => {
     </>
   );
 const handleFiltersChange = async (f) => {
-  const isEmpty =
-    !f ||
-    (!f.text?.trim() &&
-      !(f.statuses && f.statuses.size) &&
-      !(f.assignees && f.assignees.size) &&
-      !(f.tags && f.tags.size) &&
-      !f.startDate &&
-      !f.endDate);
-
-  if (isEmpty) {
-    window.history.replaceState(null, "", window.location.pathname);
-
-    try { localStorage.removeItem("board_filters_v1"); } catch {}
-
-    setFilters(null);
-
-    await fetchIdeas();
-    return;
-  }
-
-  const q = new URLSearchParams();
-  if (f.text) q.set("q", f.text.replace(/\s+/g, "_"));
-  if (f.statuses?.size) q.set("status", [...f.statuses].join(",").replace(/\s+/g, "_"));
-  if (f.assignees?.size) q.set("assignees", [...f.assignees].join(",").replace(/\s+/g, "_"));
-  if (f.tags?.size) q.set("tags", [...f.tags].join(",").replace(/\s+/g, "_"));
-  if (f.startDate) q.set("start", f.startDate);
-  if (f.endDate) q.set("end", f.endDate);
-
-  const queryString = q.toString().replace(/\+/g, "_");
-  const newUrl = `${window.location.pathname}?${queryString}`;
-  window.history.replaceState(null, "", newUrl);
-
-  setFilters(f);
-
-  await fetchIdeas();
+    if (!f) {
+      setFilters(null);
+      try { localStorage.removeItem(FILTER_LS_KEY); } catch {}
+      window.history.replaceState(null, '', window.location.pathname);
+      await fetchIdeas();
+      return;
+    }
+    setFilters(f);
+    const baseUrl = import.meta.env.VITE_BASE_URL;
+    // Manually build query string to avoid encoding commas
+    const params = [];
+    if (f.text) params.push(`q=${encodeURIComponent(f.text)}`);
+    if (f.statuses?.size) params.push(`status=${[...f.statuses].join(",")}`);
+    if (f.assignees?.size) params.push(`assignees=${[...f.assignees].join(",")}`);
+    if (f.tags?.size) params.push(`tags=${[...f.tags].join(",")}`);
+    if (f.startDate) params.push(`start=${encodeURIComponent(f.startDate)}`);
+    if (f.endDate) params.push(`end=${encodeURIComponent(f.endDate)}`);
+    const queryString = params.join('&');
+    // Update the URL to reflect filters
+    window.history.replaceState(null, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+    const url = `${baseUrl}/stories?${queryString}`;
+    try {
+      setIsLoading(true);
+      setError(null);
+      const { data } = await apiClient.get(url);
+      const newBoard = JSON.parse(JSON.stringify(initialColumns));
+      data.forEach((idea) => {
+        const column = newBoard.find((col) => col.title === idea.status);
+        if (column) {
+          column.tasks.push(idea);
+        }
+      });
+      setColumnData(newBoard);
+    } catch (err) {
+      setError(
+        err.response?.data?.detail ||
+          err.message ||
+          "Failed to load filtered ideas. Please try again later."
+      );
+      setColumnData(initialColumns);
+    } finally {
+      setIsLoading(false);
+    }
 };
 
 
@@ -399,26 +394,26 @@ const handleFiltersChange = async (f) => {
     newIdea.description.trim() !== "" &&
     newIdea.assignee.trim() !== "";
 
-  useEffect(() => {
-    // Only fetch on initial load once
-    if (!hasInitialLoad.current) {
-      hasInitialLoad.current = true;
-      fetchIdeas();
-      setTeamMembers(dummyTeamMembers);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // fetchIdeas is stable, doesn't need to be in deps
 
   useEffect(() => {
-    const fromURL = queryToFilters(window.location.search);
-    if (fromURL) setFilters(fromURL);
-    else {
-      const fromLS = loadFiltersLS();
-      if (fromLS) setFilters(fromLS);
+    if (!hasInitialLoad.current) {
+      hasInitialLoad.current = true;
+      setTeamMembers(dummyTeamMembers);
+      const savedFilters = loadFiltersLS();
+      if (savedFilters) {
+        setFilters(savedFilters);
+        handleFiltersChange(savedFilters);
+      } else {
+        fetchIdeas();
+      }
     }
   }, []);
 
+
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.__dashboardFiltersValue = filters;
+    }
     if (!filters) return;
     saveFiltersLS(filters);
   }, [filters]);
@@ -428,7 +423,7 @@ const handleFiltersChange = async (f) => {
   return (
     <div className="flex flex-col h-screen bg-white">
       <Header onCreateIdeaClick={handleOpenCreateModal} />
-      <SearchBar onFilter={handleFilter} />
+  <SearchBar onFilter={handleFilter} onFiltersChange={handleFiltersChange} />
       {isLoading ? (
         <div className="flex flex-grow items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
@@ -447,7 +442,7 @@ const handleFiltersChange = async (f) => {
         </div>
       ) : (
         <section className="flex flex-grow p-4 space-x-4 overflow-scroll">
-          {columnData.map((column, index) => (
+          {filteredColumns.map((column, index) => (
             <TaskColumn
               key={`${column.title}-${index}`}
               title={column.title}

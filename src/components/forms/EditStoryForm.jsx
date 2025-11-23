@@ -31,14 +31,11 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         assignee: story.assignee || "",
         tags: story.tags || [],
       });
-      // Initialize activity from story if available
-      // Backend may return activity as array of strings or objects
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
             return { text: item, timestamp: new Date().toLocaleString() };
           }
-          // If it's an object with "action" property from backend
           if (item.action) {
             return {
               text: item.action,
@@ -59,7 +56,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   };
 
   const addCriterion = () => {
-    // Check if we already have 5 criteria
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
       return;
