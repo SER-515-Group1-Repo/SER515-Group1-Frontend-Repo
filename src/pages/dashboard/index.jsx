@@ -5,7 +5,7 @@ import { Modal } from "@/components/common/Modal";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
 import { Header } from "@/components/layout/Header";
-import { TaskColumn } from "@/components/Task/TaskColumn";
+import { TaskColumn } from "@/components/task/TaskColumn";
 import {
   Dialog,
   DialogContent,
