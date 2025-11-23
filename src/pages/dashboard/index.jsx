@@ -355,7 +355,7 @@ const handleFiltersChange = async (f) => {
     const params = [];
     if (f.text) params.push(`q=${encodeURIComponent(f.text)}`);
     if (f.statuses?.size) params.push(`status=${[...f.statuses].join(",")}`);
-    if (f.assignees?.size) params.push(`assignees=${[...f.assignees].join(",")}`);
+    if (f.assignees?.size) params.push(`assignee=${[...f.assignees].join(",")}`);
     if (f.tags?.size) params.push(`tags=${[...f.tags].join(",")}`);
     if (f.startDate) params.push(`start=${encodeURIComponent(f.startDate)}`);
     if (f.endDate) params.push(`end=${encodeURIComponent(f.endDate)}`);

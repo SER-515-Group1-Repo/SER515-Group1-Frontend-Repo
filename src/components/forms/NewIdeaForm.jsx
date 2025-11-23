@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
-import { STATUS_OPTIONS } from "../../lib/constants";
-
 import AssigneeDropdown from "@/components/common/AssigneeDropdown";
+import { STATUS_OPTIONS } from "../../lib/constants";
 import { Input } from "@/components/ui/input";
 import TagsDropdown from "@/components/common/TagsDropdown";
 import { ChevronDown } from "lucide-react";
