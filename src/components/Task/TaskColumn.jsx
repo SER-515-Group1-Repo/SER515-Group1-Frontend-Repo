@@ -1,8 +1,15 @@
 import { Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TaskCard } from "@/components/Task/TaskCard";
+import { TaskCard } from "@/components/task/TaskCard";
 
-export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onDrop }) {
+export function TaskColumn({
+  title,
+  dotColor,
+  tasks = [],
+  onAddTask,
+  onEdit,
+  onDrop,
+}) {
   const handleDragOver = (e) => {
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "#f3f4f6";
@@ -15,7 +22,7 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
   const handleDrop = (e) => {
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "";
-    
+
     const taskData = e.dataTransfer.getData("application/json");
     if (taskData && onDrop) {
       const task = JSON.parse(taskData);
@@ -24,7 +31,7 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
   };
 
   return (
-    <div 
+    <div
       className="flex-1 min-w-72 border border-gray-100 rounded-lg p-4 bg-gray-50"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -52,11 +59,7 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
       {/* Column Body */}
       <div className="space-y-4">
         {tasks.map((task, index) => (
-          <TaskCard 
-            key={`${task.id}-${index}`} 
-            task={task}
-            onEdit={onEdit}
-          />
+          <TaskCard key={`${task.id}-${index}`} task={task} onEdit={onEdit} />
         ))}
       </div>
     </div>
