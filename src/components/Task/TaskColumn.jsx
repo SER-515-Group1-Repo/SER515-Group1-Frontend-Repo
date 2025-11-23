@@ -2,8 +2,9 @@ import { Plus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "@/components/Task/TaskCard";
 
-export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onDrop }) {
+export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onDrop, onAssign, onDelete, onMoveToTop, onPreview, isOperationInProgress = false }) {
   const handleDragOver = (e) => {
+    if (isOperationInProgress) return; // Prevent drag during operations
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "#f3f4f6";
   };
@@ -15,6 +16,11 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
   const handleDrop = (e) => {
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "";
+    
+    if (isOperationInProgress) {
+      e.preventDefault();
+      return; // Prevent drop during operations
+    }
     
     const taskData = e.dataTransfer.getData("application/json");
     if (taskData && onDrop) {
@@ -40,10 +46,11 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
             variant="ghost"
             size="icon"
             onClick={() => onAddTask && onAddTask(title)}
+            disabled={isOperationInProgress}
           >
             <Plus className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled={isOperationInProgress}>
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </div>
@@ -56,6 +63,11 @@ export function TaskColumn({ title, dotColor, tasks = [], onAddTask, onEdit, onD
             key={`${task.id}-${index}`} 
             task={task}
             onEdit={onEdit}
+            onAssign={onAssign}
+            onDelete={onDelete}
+            onMoveToTop={onMoveToTop}
+            onPreview={onPreview}
+            isOperationInProgress={isOperationInProgress}
           />
         ))}
       </div>
