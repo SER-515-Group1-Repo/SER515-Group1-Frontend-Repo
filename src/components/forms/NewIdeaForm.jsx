@@ -15,14 +15,6 @@ const NewIdeaForm = ({
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const assigneeRef = useRef(null);
 
-  const selectedAssignees = Array.isArray(newIdea.assignees)
-    ? newIdea.assignees
-    : newIdea.assignee
-    ? [newIdea.assignee]
-    : [];
-
-  const hasAssignees = selectedAssignees.length > 0;
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
@@ -32,17 +24,6 @@ const NewIdeaForm = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  const toggleAssignee = (name) => {
-    const next = selectedAssignees.includes(name)
-      ? selectedAssignees.filter((a) => a !== name)
-      : [...selectedAssignees, name];
-    setNewIdea({
-      ...newIdea,
-      assignees: next,
-      assignee: next[0] || "",
-    });
-  };
 
   return (
     <div className="space-y-4">

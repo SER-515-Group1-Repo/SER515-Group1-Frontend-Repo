@@ -60,39 +60,67 @@ const dummyTeamMembers = [
 const FILTER_LS_KEY = "board_filters_v1";
 
 const filtersToPlain = (f) =>
-  !f ? null : {
-    text: f.text || "",
-    statuses: [...(f.statuses || new Set())],
-    assignees: [...(f.assignees || new Set())],
-    tags: [...(f.tags || new Set())],
-    startDate: f.startDate || "",
-    endDate: f.endDate || "",
-  };
+  !f
+    ? null
+    : {
+        text: f.text || "",
+        statuses: [...(f.statuses || new Set())],
+        assignees: [...(f.assignees || new Set())],
+        tags: [...(f.tags || new Set())],
+        startDate: f.startDate || "",
+        endDate: f.endDate || "",
+      };
 
 const plainToFilters = (p) =>
-  !p ? null : {
-    text: p.text || "",
-    statuses: new Set(p.statuses || []),
-    assignees: new Set(p.assignees || []),
-    tags: new Set(p.tags || []),
-    startDate: p.startDate || "",
-    endDate: p.endDate || "",
-  };
+  !p
+    ? null
+    : {
+        text: p.text || "",
+        statuses: new Set(p.statuses || []),
+        assignees: new Set(p.assignees || []),
+        tags: new Set(p.tags || []),
+        startDate: p.startDate || "",
+        endDate: p.endDate || "",
+      };
 
-const saveFiltersLS = (f) => { try { localStorage.setItem(FILTER_LS_KEY, JSON.stringify(filtersToPlain(f))); } catch {} };
-const loadFiltersLS = () => { try { const s = localStorage.getItem(FILTER_LS_KEY); return s ? plainToFilters(JSON.parse(s)) : null; } catch { return null; } };
+const saveFiltersLS = (f) => {
+  try {
+    localStorage.setItem(FILTER_LS_KEY, JSON.stringify(filtersToPlain(f)));
+  } catch {}
+};
+const loadFiltersLS = () => {
+  try {
+    const s = localStorage.getItem(FILTER_LS_KEY);
+    return s ? plainToFilters(JSON.parse(s)) : null;
+  } catch {
+    return null;
+  }
+};
 
 const decodeUnderscore = (v) => (v ? v.replace(/_/g, " ") : "");
 const queryToFilters = (search) => {
   const q = new URLSearchParams(search);
-  const split = (k) => (q.get(k)?.split(",").map((x) => decodeUnderscore(x)).filter(Boolean)) || [];
+  const split = (k) =>
+    q
+      .get(k)
+      ?.split(",")
+      .map((x) => decodeUnderscore(x))
+      .filter(Boolean) || [];
   const text = decodeUnderscore(q.get("q") || "");
   const statuses = new Set(split("status"));
   const assignees = new Set(split("assignees"));
   const tags = new Set(split("tags"));
   const startDate = q.get("start") || "";
   const endDate = q.get("end") || "";
-  if (!text && !statuses.size && !assignees.size && !tags.size && !startDate && !endDate) return null;
+  if (
+    !text &&
+    !statuses.size &&
+    !assignees.size &&
+    !tags.size &&
+    !startDate &&
+    !endDate
+  )
+    return null;
   return { text, statuses, assignees, tags, startDate, endDate };
 };
 
@@ -118,7 +146,9 @@ const DashboardPage = () => {
 
   const nextTaskId = useRef(
     Math.max(
-      ...initialColumns.flatMap(col => col.tasks.map(t => parseInt(t.id, 10) || 0)),
+      ...initialColumns.flatMap((col) =>
+        col.tasks.map((t) => parseInt(t.id, 10) || 0)
+      ),
       0
     ) + 1
   );
@@ -197,7 +227,7 @@ const DashboardPage = () => {
   };
 
   const handleDropTask = async (task, newStatus) => {
-    if (task.status === newStatus) return; 
+    if (task.status === newStatus) return;
 
     try {
       const token = localStorage.getItem("authToken");
@@ -321,31 +351,23 @@ const DashboardPage = () => {
 
   const handleFilter = useCallback(
     (searchTerm) => {
-      fetchIdeas(searchTerm, true); 
+      fetchIdeas(searchTerm, true);
     },
     [fetchIdeas]
   );
 
-  const IdeaFormFooter = () => (
-    <>
-      <Button variant="outline" onClick={() => setIsModalOpen(false)}>
-        Cancel
-      </Button>
-      <Button
-        onClick={() => {
-          handleSaveIdea();
-        }}
-        disabled={!isFormValid}
-      >
-        Save Idea
-      </Button>
-    </>
-  );
-const handleFiltersChange = async (f) => {
+  const handleFiltersChange = async (f) => {
     if (!f) {
       setFilters(null);
-      try { localStorage.removeItem(FILTER_LS_KEY); } catch {}
-      window.history.replaceState(null, '', window.location.pathname);
+      try {
+        localStorage.removeItem(FILTER_LS_KEY);
+      } catch {
+        toastNotify(
+          "Failed to clear saved filters from local storage.",
+          "error"
+        );
+      }
+      window.history.replaceState(null, "", window.location.pathname);
       await fetchIdeas();
       return;
     }
@@ -355,13 +377,18 @@ const handleFiltersChange = async (f) => {
     const params = [];
     if (f.text) params.push(`q=${encodeURIComponent(f.text)}`);
     if (f.statuses?.size) params.push(`status=${[...f.statuses].join(",")}`);
-    if (f.assignees?.size) params.push(`assignee=${[...f.assignees].join(",")}`);
+    if (f.assignees?.size)
+      params.push(`assignee=${[...f.assignees].join(",")}`);
     if (f.tags?.size) params.push(`tags=${[...f.tags].join(",")}`);
     if (f.startDate) params.push(`start=${encodeURIComponent(f.startDate)}`);
     if (f.endDate) params.push(`end=${encodeURIComponent(f.endDate)}`);
-    const queryString = params.join('&');
+    const queryString = params.join("&");
     // Update the URL to reflect filters
-    window.history.replaceState(null, '', `${window.location.pathname}${queryString ? `?${queryString}` : ''}`);
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${queryString ? `?${queryString}` : ""}`
+    );
     const url = `${baseUrl}/stories?${queryString}`;
     try {
       setIsLoading(true);
@@ -385,15 +412,12 @@ const handleFiltersChange = async (f) => {
     } finally {
       setIsLoading(false);
     }
-};
-
-
+  };
 
   const isFormValid =
     newIdea.title.trim() !== "" &&
     newIdea.description.trim() !== "" &&
     newIdea.assignee.trim() !== "";
-
 
   useEffect(() => {
     if (!hasInitialLoad.current) {
@@ -409,9 +433,8 @@ const handleFiltersChange = async (f) => {
     }
   }, []);
 
-
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       window.__dashboardFiltersValue = filters;
     }
     if (!filters) return;
@@ -423,7 +446,10 @@ const handleFiltersChange = async (f) => {
   return (
     <div className="flex flex-col h-screen bg-white">
       <Header onCreateIdeaClick={handleOpenCreateModal} />
-  <SearchBar onFilter={handleFilter} onFiltersChange={handleFiltersChange} />
+      <SearchBar
+        onFilter={handleFilter}
+        onFiltersChange={handleFiltersChange}
+      />
       {isLoading ? (
         <div className="flex flex-grow items-center justify-center">
           <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
@@ -465,8 +491,12 @@ const handleFiltersChange = async (f) => {
           description="Fill in the details for your new idea. Click save when you're done."
           footer={
             <>
-              <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveIdea} disabled={!isFormValid}>Save Idea</Button>
+              <Button variant="outline" onClick={() => setIsModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveIdea} disabled={!isFormValid}>
+                Save Idea
+              </Button>
             </>
           }
         >

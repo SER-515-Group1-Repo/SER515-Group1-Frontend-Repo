@@ -41,8 +41,7 @@ export function applyFilters(columns = [], filters) {
 
     if (query && !(t.includes(query) || d.includes(query))) return false;
     if (assignees?.size && !assignees.has(String(taskAssignee))) return false;
-    if (tags?.size && ![...tags].every((tg) => taskTags.includes(tg)))
-      return false;
+    if (tags?.size && !taskTags.some((tg) => tags.has(tg))) return false;
 
     if ((start || end) && !taskDate) return false;
     if (start && taskDate && taskDate < start) return false;
@@ -60,11 +59,7 @@ export function applyFilters(columns = [], filters) {
   });
 }
 
-export default function NewFilterDropdown({
-  data = [],
-  value = null,
-  onApply,
-}) {
+export default function NewFilterDropdown({ value = null, onApply }) {
   const [open, setOpen] = useState(false);
 
   const [text, setText] = useState("");
