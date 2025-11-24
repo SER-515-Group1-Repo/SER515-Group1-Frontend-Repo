@@ -1,49 +1,64 @@
 import React, { useState, useEffect, useRef } from "react";
+import FilterDropdown from "@/components/forms/FilterDropdown";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { debounce } from "@/lib/utils";
 
-export function SearchBar({ onFilter }) {
+export function SearchBar({ onFilter, onFiltersChange }) {
   const [searchTerm, setSearchTerm] = useState("");
   const isInitialMount = useRef(true);
   const hasUserInteracted = useRef(false);
 
-  // Use ref to store the debounced function so it doesn't get recreated
+  // Try to load filters from localStorage if available
+  const getInitialFilterValue = () => {
+    if (typeof window !== 'undefined') {
+      if (window.__dashboardFiltersValue) return window.__dashboardFiltersValue;
+      try {
+        const s = localStorage.getItem('board_filters_v1');
+        return s ? JSON.parse(s) : undefined;
+      } catch { return undefined; }
+    }
+    return undefined;
+  };
+  const [filterValue, setFilterValue] = useState(getInitialFilterValue);
+
   const debouncedFilterRef = useRef(
     debounce((term) => {
       onFilter(term);
     }, 500)
   );
 
-  // Update the debounced function if onFilter changes (but don't call it)
   useEffect(() => {
     debouncedFilterRef.current = debounce((term) => {
       onFilter(term);
     }, 500);
-    // Don't call it here, just update the ref
   }, [onFilter]);
 
-  // Call debounced filter whenever searchTerm changes (but not on initial mount)
   useEffect(() => {
-    // Skip the initial mount - only call when user actually types
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
     
-    // Only call if user has interacted (changed the search term)
     if (hasUserInteracted.current) {
-      // Call debounced filter for both empty and non-empty search terms
-      // Empty string will trigger API call to show all ideas
       debouncedFilterRef.current(searchTerm);
     }
   }, [searchTerm]);
 
-  // Track when user actually types in the input
   const handleInputChange = (e) => {
     hasUserInteracted.current = true;
     setSearchTerm(e.target.value);
   };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handler = () => {
+        setFilterValue(window.__dashboardFiltersValue);
+      };
+      window.addEventListener('dashboardFiltersChanged', handler);
+      return () => window.removeEventListener('dashboardFiltersChanged', handler);
+    }
+  }, []);
 
   return (
     <div className="flex items-center p-4 border-b">
@@ -56,6 +71,21 @@ export function SearchBar({ onFilter }) {
           onChange={handleInputChange}
         />
       </div>
+
+      <FilterDropdown onApply={filters => {
+        if (!filters) {
+          if (typeof window !== 'undefined') window.__dashboardFiltersValue = undefined;
+          setFilterValue(undefined);
+        } else {
+          if (typeof window !== 'undefined') window.__dashboardFiltersValue = filters;
+          setFilterValue(filters);
+        }
+        onFiltersChange(filters);
+        if (typeof window !== 'undefined') {
+          const event = new Event('dashboardFiltersChanged');
+          window.dispatchEvent(event);
+        }
+      }} value={filterValue} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Send } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
-import { STATUS_OPTIONS } from '../../lib/constants';
+import { STATUS_OPTIONS } from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const [formData, setFormData] = useState({
@@ -17,35 +17,47 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     tags: [],
   });
 
-
   const [activity, setActivity] = useState([]);
   const [newComment, setNewComment] = useState("");
 
   useEffect(() => {
     if (story) {
+      // Parse tags - could be string, array, or empty
+      let parsedTags = [];
+      if (story.tags) {
+        if (typeof story.tags === 'string') {
+          parsedTags = story.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        } else if (Array.isArray(story.tags)) {
+          parsedTags = story.tags;
+        }
+      }
+      
       setFormData({
         title: story.title || "",
         description: story.description || "",
         status: story.status || "",
-        acceptanceCriteria: story.acceptanceCriteria || [],
-        storyPoints: story.storyPoints || "",
-        assignee: story.assignee || "",
-        tags: story.tags || [],
+        acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
+        storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
+        assignee: story.assignee ? story.assignee : "",
+        tags: parsedTags,
       });
-      // Initialize activity from story if available
-      // Backend may return activity as array of strings or objects
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
             return { text: item, timestamp: new Date().toLocaleString() };
           }
-          // If it's an object with "action" property from backend
           if (item.action) {
-            return { text: item.action, timestamp: item.timestamp || new Date().toLocaleString() };
+            return {
+              text: item.action,
+              timestamp: item.timestamp || new Date().toLocaleString(),
+            };
           }
           return item;
         });
         setActivity(formattedActivity);
+      } else {
+        // Clear activity if no activity in story (different task opened)
+        setActivity([]);
       }
     }
   }, [story]);
@@ -57,7 +69,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   };
 
   const addCriterion = () => {
-    // Check if we already have 5 criteria
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
       return;
@@ -83,17 +94,48 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({
+    
+    // Validate required fields
+    if (!formData.title || !formData.title.trim()) {
+      alert("Title is required!");
+      return;
+    }
+    
+    if (!formData.description || !formData.description.trim()) {
+      alert("Description is required!");
+      return;
+    }
+    
+    if (!formData.status) {
+      alert("Status is required!");
+      return;
+    }
+    
+    // Validate story points if provided
+    if (formData.storyPoints !== '' && formData.storyPoints !== null) {
+      const points = parseInt(formData.storyPoints);
+      if (isNaN(points) || points < 0 || points > 100) {
+        alert("Story points must be a number between 0 and 100!");
+        return;
+      }
+    }
+    
+    const submitData = {
       ...story,
       ...formData,
       acceptanceCriteria: formData.acceptanceCriteria.filter((c) => c.trim()),
       storyPoints: formData.storyPoints ? parseInt(formData.storyPoints) : null,
-      activity,
-    });
+      // Also send snake_case versions for backend compatibility
+      acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
+      story_points: formData.storyPoints ? parseInt(formData.storyPoints) : null,
+      // Send activity - filter to only include items with "text" property (user-added comments)
+      activity: activity.filter((item) => item.text && !item.action),
+    };
+    onSave(submitData);
   };
 
   const teamMembersWithDefault = [
-    { name: "Select an assignee", id: 0, role: "" },
+    { name: "Unassigned", id: 0, role: "" },
     ...teamMembers,
   ];
 
@@ -175,18 +217,30 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         <Label htmlFor="edit-story-points" className="text-right">
           Story Points
         </Label>
-        <Input
-          id="edit-story-points"
-          type="number"
-          min="0"
-          max="100"
-          placeholder="e.g., 8"
-          className="col-span-3"
-          value={formData.storyPoints}
-          onChange={(e) =>
-            setFormData({ ...formData, storyPoints: e.target.value })
-          }
-        />
+        <div className="col-span-3">
+          <Input
+            id="edit-story-points"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            placeholder="e.g., 8 (0-100)"
+            className="col-span-3"
+            value={formData.storyPoints}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === '' || val === null) {
+                setFormData({ ...formData, storyPoints: '' });
+              } else {
+                const num = parseInt(val);
+                if (!isNaN(num) && num >= 0 && num <= 100) {
+                  setFormData({ ...formData, storyPoints: val });
+                }
+              }
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-1">Valid range: 0-100</p>
+        </div>
       </div>
 
       {/* Status */}
@@ -218,7 +272,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           id="edit-assignee"
           className="col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={formData.assignee}
-          onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, assignee: e.target.value })
+          }
         >
           {teamMembersWithDefault.map((member, index) => (
             <option key={`${member.id}-${index}`} value={member.name}>
@@ -229,10 +285,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       </div>
 
       {/* Tags */}
-      <TagsDropdown
-        newIdea={formData}
-        setNewIdea={setFormData}
-      />
+      <TagsDropdown newIdea={formData} setNewIdea={setFormData} />
 
       {/* Activity and Comments */}
       <div className="grid grid-cols-4 items-start gap-4 pt-4 border-t">
@@ -242,8 +295,13 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           <div className="max-h-48 overflow-y-auto space-y-2 bg-gray-50 rounded-md p-3">
             {activity && activity.length > 0 ? (
               activity.map((item, index) => (
-                <div key={index} className="text-sm border-l-2 border-blue-300 pl-2 py-1">
-                  <p className="text-muted-foreground text-xs">{item.timestamp}</p>
+                <div
+                  key={index}
+                  className="text-sm border-l-2 border-blue-300 pl-2 py-1"
+                >
+                  <p className="text-muted-foreground text-xs">
+                    {item.timestamp}
+                  </p>
                   <p className="text-foreground">{item.text}</p>
                 </div>
               ))
@@ -251,7 +309,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
               <p className="text-sm text-muted-foreground">No comments yet</p>
             )}
           </div>
-          
+
           {/* Comment Input */}
           <div className="flex gap-2">
             <textarea

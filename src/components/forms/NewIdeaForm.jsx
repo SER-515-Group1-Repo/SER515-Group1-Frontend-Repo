@@ -1,41 +1,57 @@
-// src/components/forms.jsx
-import { Input } from "@/components/ui/input";
+import React, { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
-import { STATUS_OPTIONS } from '../../lib/constants';
-
+import AssigneeDropdown from "@/components/common/AssigneeDropdown";
+import { STATUS_OPTIONS } from "../../lib/constants";
+import { Input } from "@/components/ui/input";
 import TagsDropdown from "@/components/common/TagsDropdown";
+import { ChevronDown } from "lucide-react";
 
-const NewIdeaForm = ({ newIdea, setNewIdea, teamMembers, selectedColumn }) => {
-  teamMembers = [
-    { name: "Select an assignee", id: 0, role: "" },
-    ...teamMembers,
-  ];
+const NewIdeaForm = ({
+  newIdea,
+  setNewIdea,
+  teamMembers = [],
+  selectedColumn,
+}) => {
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
+  const assigneeRef = useRef(null);
 
-
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
+        setIsAssigneeOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <div className="grid gap-4">
+    <div className="space-y-4">
+      {/* Title */}
       <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="idea-title" className="text-right">
+        <Label htmlFor="title" className="text-right">
           Title
         </Label>
         <Input
-          id="idea-title"
-          placeholder="Enter the title"
+          id="title"
+          placeholder="e.g. Improve task filter UX"
           className="col-span-3"
           value={newIdea.title}
           onChange={(e) => setNewIdea({ ...newIdea, title: e.target.value })}
         />
       </div>
 
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="description" className="text-right">
+      {/* Description */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label htmlFor="description" className="text-right pt-2">
           Description
         </Label>
         <textarea
           id="description"
-          placeholder="Describe the new idea"
-          className="col-span-3 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-vertical min-h-24"
+          rows={4}
+          placeholder="Briefly describe the idea…"
+          className="col-span-3 h-28 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
+                     ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           value={newIdea.description}
           onChange={(e) =>
             setNewIdea({ ...newIdea, description: e.target.value })
@@ -61,31 +77,13 @@ const NewIdeaForm = ({ newIdea, setNewIdea, teamMembers, selectedColumn }) => {
         </select>
       </div>
 
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="assignee" className="text-right">
-          Assignee
-        </Label>
-        <select
-          id="assignee"
-          className={`col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm
-                      ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-                      disabled:cursor-not-allowed disabled:opacity-50
-                      ${
-                        newIdea.assignee
-                          ? "text-foreground"
-                          : "text-muted-foreground"
-                      }`}
-          value={newIdea.assignee ?? ""}
-          onChange={(e) => setNewIdea({ ...newIdea, assignee: e.target.value })}
-        >
-          {teamMembers.map((member, index) => (
-            <option key={`${member.id}-${index}`} value={member.name}>
-              {member.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <AssigneeDropdown
+        newIdea={newIdea}
+        setNewIdea={setNewIdea}
+        teamMembers={teamMembers}
+      />
 
+      {/* Tags */}
       <TagsDropdown newIdea={newIdea} setNewIdea={setNewIdea} />
     </div>
   );
