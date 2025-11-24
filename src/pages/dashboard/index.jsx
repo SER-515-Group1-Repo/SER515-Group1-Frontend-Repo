@@ -5,8 +5,8 @@ import { Modal } from "@/components/common/Modal";
 import { Button } from "@/components/ui/button";
 import { SearchBar } from "@/components/SearchBar";
 import { Header } from "@/components/layout/Header";
-import { TaskColumn } from "@/components/Task/TaskColumn";
-import { TaskPreviewModal } from "@/components/Task/TaskPreviewModal";
+import { TaskColumn } from "@/components/taskComponent/TaskColumn";
+import { TaskPreviewModal } from "@/components/taskComponent/TaskPreviewModal";
 import {
   Dialog,
   DialogContent,
@@ -87,7 +87,9 @@ const plainToFilters = (p) =>
 const saveFiltersLS = (f) => {
   try {
     localStorage.setItem(FILTER_LS_KEY, JSON.stringify(filtersToPlain(f)));
-  } catch {}
+  } catch {
+    toastNotify("Failed to save filters to local storage.", "error");
+  }
 };
 const loadFiltersLS = () => {
   try {
