@@ -63,16 +63,27 @@ This project is designed to be run via Docker Compose alongside its backend coun
 
 3.  **Create the backend environment file.** Copy the example file to create your local `.env` file. This file contains the necessary secrets and configuration for the backend and database.
 
-    ```bash
-    cp .env.example .env
-    ```
+    *   **On macOS / Linux:**
+        ```bash
+        cp .env.example .env
+        ```
+    *   **On Windows (Command Prompt):**
+        ```bash
+        copy .env.example .env
+        ```
 
     _(No customization is needed for a standard local setup.)_
 
 4.  **Create the frontend environment file.** This command creates the `.env` file inside the frontend directory, which the Docker build process will use.
-    ```bash
-    cp ../SER515-Group1-Frontend-Repo/.env.example ../SER515-Group1-Frontend-Repo/.env
-    ```
+    
+    *   **On macOS / Linux:**
+        ```bash
+        cp ../SER515-Group1-Frontend-Repo/.env.example ../SER515-Group1-Frontend-Repo/.env
+        ```
+    *   **On Windows (Command Prompt):**
+        ```bash
+        copy ..\SER515-Group1-Frontend-Repo\.env.example ..\SER515-Group1-Frontend-Repo\.env
+        ```
 
 ### Running the Full-Stack Application
 
