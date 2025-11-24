@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Send } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
-import { STATUS_OPTIONS } from '../../lib/constants';
+import { STATUS_OPTIONS } from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const [formData, setFormData] = useState({
@@ -16,7 +16,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     assignee: "",
     tags: [],
   });
-
 
   const [activity, setActivity] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -42,16 +41,16 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         assignee: story.assignee ? story.assignee : "",
         tags: parsedTags,
       });
-      // Initialize activity from story if available
-      // Backend may return activity as array of strings or objects
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
             return { text: item, timestamp: new Date().toLocaleString() };
           }
-          // If it's an object with "action" property from backend
           if (item.action) {
-            return { text: item.action, timestamp: item.timestamp || new Date().toLocaleString() };
+            return {
+              text: item.action,
+              timestamp: item.timestamp || new Date().toLocaleString(),
+            };
           }
           return item;
         });
@@ -70,7 +69,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   };
 
   const addCriterion = () => {
-    // Check if we already have 5 criteria
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
       return;
@@ -274,7 +272,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           id="edit-assignee"
           className="col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={formData.assignee}
-          onChange={(e) => setFormData({ ...formData, assignee: e.target.value })}
+          onChange={(e) =>
+            setFormData({ ...formData, assignee: e.target.value })
+          }
         >
           {teamMembersWithDefault.map((member, index) => (
             <option key={`${member.id}-${index}`} value={member.name}>
@@ -285,10 +285,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       </div>
 
       {/* Tags */}
-      <TagsDropdown
-        newIdea={formData}
-        setNewIdea={setFormData}
-      />
+      <TagsDropdown newIdea={formData} setNewIdea={setFormData} />
 
       {/* Activity and Comments */}
       <div className="grid grid-cols-4 items-start gap-4 pt-4 border-t">
@@ -298,8 +295,13 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           <div className="max-h-48 overflow-y-auto space-y-2 bg-gray-50 rounded-md p-3">
             {activity && activity.length > 0 ? (
               activity.map((item, index) => (
-                <div key={index} className="text-sm border-l-2 border-blue-300 pl-2 py-1">
-                  <p className="text-muted-foreground text-xs">{item.timestamp}</p>
+                <div
+                  key={index}
+                  className="text-sm border-l-2 border-blue-300 pl-2 py-1"
+                >
+                  <p className="text-muted-foreground text-xs">
+                    {item.timestamp}
+                  </p>
                   <p className="text-foreground">{item.text}</p>
                 </div>
               ))
@@ -307,7 +309,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
               <p className="text-sm text-muted-foreground">No comments yet</p>
             )}
           </div>
-          
+
           {/* Comment Input */}
           <div className="flex gap-2">
             <textarea
