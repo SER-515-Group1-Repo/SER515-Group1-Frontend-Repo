@@ -9,8 +9,14 @@ export function TaskColumn({
   onAddTask,
   onEdit,
   onDrop,
+  onAssign,
+  onDelete,
+  onMoveToTop,
+  onPreview,
+  isOperationInProgress = false,
 }) {
   const handleDragOver = (e) => {
+    if (isOperationInProgress) return; // Prevent drag during operations
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "#f3f4f6";
   };
@@ -22,6 +28,12 @@ export function TaskColumn({
   const handleDrop = (e) => {
     e.preventDefault();
     e.currentTarget.style.backgroundColor = "";
+
+    if (isOperationInProgress) {
+      e.preventDefault();
+      return; // Prevent drop during operations
+    }
+
     const taskData = e.dataTransfer.getData("application/json");
     if (taskData && onDrop) {
       const task = JSON.parse(taskData);
@@ -48,23 +60,29 @@ export function TaskColumn({
             variant="ghost"
             size="icon"
             onClick={() => onAddTask && onAddTask(title)}
-            title="Add new idea"
+            disabled={isOperationInProgress}
           >
             <Plus className="w-4 h-4" />
           </Button>
-
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" disabled={isOperationInProgress}>
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </div>
       </div>
+
+      {/* Column Body */}
       <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
         {tasks.length > 0 ? (
           tasks.map((task, index) => (
             <TaskCard
-              key={`${task.id ?? index}-${index}`}
+              key={`${task.id}-${index}`}
               task={task}
               onEdit={onEdit}
+              onAssign={onAssign}
+              onDelete={onDelete}
+              onMoveToTop={onMoveToTop}
+              onPreview={onPreview}
+              isOperationInProgress={isOperationInProgress}
             />
           ))
         ) : (
