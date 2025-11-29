@@ -12,6 +12,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     description: "",
     status: "",
     acceptanceCriteria: [],
+    acceptanceTemplate: "numbered", // 'numbered' or 'gwt'
     storyPoints: "",
     assignee: "",
     tags: [],
@@ -37,10 +38,19 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         description: story.description || "",
         status: story.status || "",
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
+        acceptanceTemplate: Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.some((c) => typeof c === 'string' && (c.includes('Given:') || c.includes('When:') || c.includes('Then:'))) ? 'gwt' : 'numbered',
         storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
         assignee: story.assignee ? story.assignee : "",
         tags: parsedTags,
       });
+      // If template is GWT initialize structured local state
+      const detectedGwt = Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.some((c) => typeof c === 'string' && (c.includes('Given:') || c.includes('When:') || c.includes('Then:')));
+      if (detectedGwt) {
+        const parsed = (story.acceptanceCriteria || []).map((s) => parseStringToGwt(s));
+        setGwtCriteria(parsed.length ? parsed : [{ given: '', when: '', then: '' }]);
+      } else {
+        setGwtCriteria([]);
+      }
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
@@ -68,20 +78,69 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     setFormData({ ...formData, acceptanceCriteria: updated });
   };
 
+  // Local structured state for GWT template
+  const [gwtCriteria, setGwtCriteria] = useState([]);
+
+  // Convert a GWT object to a single string for storage/preview
+  const combineGwtToString = (g) => {
+    const given = g.given?.trim() || "";
+    const when = g.when?.trim() || "";
+    const then = g.then?.trim() || "";
+    // Use a readable single-line format so previews/list render nicely
+    return `Given: ${given} | When: ${when} | Then: ${then}`;
+  };
+
+  const parseStringToGwt = (str) => {
+    if (!str || typeof str !== 'string') return { given: '', when: '', then: '' };
+    // Try to extract by labels; fallback to putting full text into 'given'
+    const givenMatch = str.match(/Given:\s*([^|]*)/i);
+    const whenMatch = str.match(/When:\s*([^|]*)/i);
+    const thenMatch = str.match(/Then:\s*([^|]*)/i);
+    if (givenMatch || whenMatch || thenMatch) {
+      return {
+        given: givenMatch ? givenMatch[1].trim() : '',
+        when: whenMatch ? whenMatch[1].trim() : '',
+        then: thenMatch ? thenMatch[1].trim() : '',
+      };
+    }
+    return { given: str, when: '', then: '' };
+  };
+
+  const updateGwtCriterion = (index, field, value) => {
+    const newGwt = [...gwtCriteria];
+    newGwt[index] = { ...newGwt[index], [field]: value };
+    setGwtCriteria(newGwt);
+    // keep formData.acceptanceCriteria in sync (as combined strings)
+    const combined = newGwt.map((g) => combineGwtToString(g));
+    setFormData({ ...formData, acceptanceCriteria: combined });
+  };
+
   const addCriterion = () => {
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
       return;
     }
-    setFormData({
-      ...formData,
-      acceptanceCriteria: [...formData.acceptanceCriteria, ""],
-    });
+    if (formData.acceptanceTemplate === 'gwt') {
+      const newGwt = [...gwtCriteria, { given: '', when: '', then: '' }];
+      setGwtCriteria(newGwt);
+      setFormData({ ...formData, acceptanceCriteria: newGwt.map((g) => combineGwtToString(g)) });
+    } else {
+      setFormData({
+        ...formData,
+        acceptanceCriteria: [...formData.acceptanceCriteria, ""],
+      });
+    }
   };
 
   const removeCriterion = (index) => {
-    const updated = formData.acceptanceCriteria.filter((_, i) => i !== index);
-    setFormData({ ...formData, acceptanceCriteria: updated });
+    if (formData.acceptanceTemplate === 'gwt') {
+      const updatedGwt = gwtCriteria.filter((_, i) => i !== index);
+      setGwtCriteria(updatedGwt);
+      setFormData({ ...formData, acceptanceCriteria: updatedGwt.map((g) => combineGwtToString(g)) });
+    } else {
+      const updated = formData.acceptanceCriteria.filter((_, i) => i !== index);
+      setFormData({ ...formData, acceptanceCriteria: updated });
+    }
   };
 
   const handleAddComment = () => {
@@ -177,14 +236,53 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       <div className="grid grid-cols-4 items-start gap-4">
         <Label className="text-right pt-2">Acceptance Criteria</Label>
         <div className="col-span-3 space-y-2">
+          {/* Template toggle */}
+          <div className="flex items-center gap-4 mb-2">
+            <label className="text-sm flex items-center gap-2">
+              <input
+                type="radio"
+                name="ac-template"
+                value="numbered"
+                checked={formData.acceptanceTemplate === 'numbered'}
+                onChange={() => {
+                  setFormData({ ...formData, acceptanceTemplate: 'numbered' });
+                }}
+              />
+              <span className="text-sm">Numbered list</span>
+            </label>
+            <label className="text-sm flex items-center gap-2">
+              <input
+                type="radio"
+                name="ac-template"
+                value="gwt"
+                checked={formData.acceptanceTemplate === 'gwt'}
+                onChange={() => {
+                  // Initialize gwtCriteria from existing strings
+                  const parsed = formData.acceptanceCriteria.map((s) => parseStringToGwt(s));
+                  setGwtCriteria(parsed.length ? parsed : [{ given: '', when: '', then: '' }]);
+                  setFormData({ ...formData, acceptanceTemplate: 'gwt', acceptanceCriteria: parsed.map((g) => combineGwtToString(g)) });
+                }}
+              />
+              <span className="text-sm">Given / When / Then</span>
+            </label>
+          </div>
+
           {formData.acceptanceCriteria.map((criteria, index) => (
             <div key={index} className="flex gap-2">
-              <Input
-                placeholder={`Criterion ${index + 1}`}
-                value={criteria}
-                onChange={(e) => updateCriteria(index, e.target.value)}
-                className="flex-1"
-              />
+              {formData.acceptanceTemplate === 'gwt' ? (
+                <div className="flex-1 grid grid-cols-3 gap-2">
+                  <Input placeholder="Given..." value={gwtCriteria[index]?.given || ''} onChange={(e) => updateGwtCriterion(index, 'given', e.target.value)} />
+                  <Input placeholder="When..." value={gwtCriteria[index]?.when || ''} onChange={(e) => updateGwtCriterion(index, 'when', e.target.value)} />
+                  <Input placeholder="Then..." value={gwtCriteria[index]?.then || ''} onChange={(e) => updateGwtCriterion(index, 'then', e.target.value)} />
+                </div>
+              ) : (
+                <Input
+                  placeholder={`Criterion ${index + 1}`}
+                  value={criteria}
+                  onChange={(e) => updateCriteria(index, e.target.value)}
+                  className="flex-1"
+                />
+              )}
               <Button
                 type="button"
                 variant="outline"
