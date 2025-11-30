@@ -328,6 +328,37 @@ const DashboardPage = () => {
     toastNotify("Task moved to top!", "success");
   };
 
+  // Handle Sort for column
+  const handleSort = (columnTitle, sortBy) => {
+    setColumnData((prevColumns) => {
+      return prevColumns.map((col) => {
+        if (col.title === columnTitle) {
+          const sortedTasks = [...col.tasks].sort((a, b) => {
+            switch (sortBy) {
+              case "title":
+                return (a.title || "").localeCompare(b.title || "");
+              case "storyPoints":
+                // Sort by story points (nulls/undefined at the end)
+                const aPoints = a.storyPoints ?? a.story_points ?? Infinity;
+                const bPoints = b.storyPoints ?? b.story_points ?? Infinity;
+                return aPoints - bPoints;
+              case "dateCreated":
+                // Sort by created_at (newest first)
+                const aDate = new Date(a.created_at || 0);
+                const bDate = new Date(b.created_at || 0);
+                return bDate - aDate;
+              default:
+                return 0;
+            }
+          });
+          return { ...col, tasks: sortedTasks };
+        }
+        return col;
+      });
+    });
+    toastNotify(`Sorted by ${sortBy === "storyPoints" ? "story points" : sortBy === "dateCreated" ? "date created" : "title"}`, "success");
+  };
+
   // NEW: Handle Drop Task (Drag and Drop to change status)
   const handleDropTask = async (task, newStatus) => {
     if (!task || !newStatus) return; // Validate inputs
@@ -891,6 +922,7 @@ const DashboardPage = () => {
               onAssign={handleEditTask}
               onDelete={handleDeleteTask}
               onMoveToTop={handleMoveToTop}
+              onSort={handleSort}
               isOperationInProgress={isSaving || isLoading}
               onPreview={handlePreviewTask}
             />

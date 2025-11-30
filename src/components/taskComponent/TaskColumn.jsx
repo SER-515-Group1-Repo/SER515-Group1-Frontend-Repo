@@ -1,4 +1,5 @@
-import { Plus, MoreHorizontal } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Plus, MoreHorizontal, ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "@/components/taskComponent/TaskCard";
 
@@ -13,8 +14,30 @@ export function TaskColumn({
   onDelete,
   onMoveToTop,
   onPreview,
+  onSort,
   isOperationInProgress = false,
 }) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSort = (sortBy) => {
+    if (onSort) {
+      onSort(title, sortBy);
+    }
+    setIsMenuOpen(false);
+  };
+
   const handleDragOver = (e) => {
     if (isOperationInProgress) return; // Prevent drag during operations
     e.preventDefault();
@@ -64,9 +87,42 @@ export function TaskColumn({
           >
             <Plus className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" disabled={isOperationInProgress}>
-            <MoreHorizontal className="w-4 h-4" />
-          </Button>
+          <div className="relative" ref={menuRef}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              disabled={isOperationInProgress}
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </Button>
+            {isMenuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 rounded-md border bg-white shadow-lg z-20">
+                <div className="px-3 py-2 text-xs font-semibold text-muted-foreground border-b flex items-center gap-1">
+                  <ArrowUpDown className="w-3 h-3" />
+                  Sort by
+                </div>
+                <button
+                  onClick={() => handleSort("title")}
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent"
+                >
+                  Title (A-Z)
+                </button>
+                <button
+                  onClick={() => handleSort("storyPoints")}
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent"
+                >
+                  Story Points
+                </button>
+                <button
+                  onClick={() => handleSort("dateCreated")}
+                  className="w-full px-3 py-2 text-sm text-left hover:bg-accent"
+                >
+                  Date Created
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
