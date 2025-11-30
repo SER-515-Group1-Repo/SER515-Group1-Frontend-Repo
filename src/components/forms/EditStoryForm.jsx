@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Send, ChevronDown } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
-import { STATUS_OPTIONS } from "../../lib/constants";
+import { STATUS_OPTIONS, STORY_POINTS_OPTIONS } from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const [formData, setFormData] = useState({
@@ -245,28 +245,26 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           Story Points
         </Label>
         <div className="col-span-3">
-          <Input
+          <select
             id="edit-story-points"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            placeholder="e.g., 8 (0-100)"
-            className="col-span-3"
-            value={formData.storyPoints}
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
             onChange={(e) => {
               const val = e.target.value;
-              if (val === '' || val === null) {
-                setFormData({ ...formData, storyPoints: '' });
-              } else {
-                const num = parseInt(val);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                  setFormData({ ...formData, storyPoints: val });
-                }
-              }
+              setFormData({ 
+                ...formData, 
+                storyPoints: val === "" ? "" : parseInt(val) 
+              });
             }}
-          />
-          <p className="text-xs text-muted-foreground mt-1">Valid range: 0-100</p>
+          >
+            <option value="">Select story points...</option>
+            {STORY_POINTS_OPTIONS.map((points) => (
+              <option key={points} value={points}>
+                {points}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
         </div>
       </div>
 

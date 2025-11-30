@@ -10,3 +10,6 @@ export const STATUS_OPTIONS = [
   "Sprint Ready",
 ];
 
+// Fibonacci sequence values for story points (Agile/Scrum industry standard)
+// Values beyond 13 indicate story should be broken down into smaller tasks
+export const STORY_POINTS_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21];
