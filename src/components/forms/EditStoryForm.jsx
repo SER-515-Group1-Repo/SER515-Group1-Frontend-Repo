@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { X, Send } from "lucide-react";
+import { X, Send, ChevronDown } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
 import { STATUS_OPTIONS } from "../../lib/constants";
 
@@ -12,14 +12,26 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     description: "",
     status: "",
     acceptanceCriteria: [],
-    acceptanceTemplate: "numbered", // 'numbered' or 'gwt'
     storyPoints: "",
-    assignee: "",
+    assignees: [],
     tags: [],
   });
 
   const [activity, setActivity] = useState([]);
   const [newComment, setNewComment] = useState("");
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
+  const assigneeRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (assigneeRef.current && !assigneeRef.current.contains(e.target)) {
+        setIsAssigneeOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     if (story) {
@@ -33,36 +45,38 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         }
       }
       
+      // Parse assignees - could be string, array, or empty
+      let parsedAssignees = [];
+      if (story.assignees) {
+        if (Array.isArray(story.assignees)) {
+          parsedAssignees = story.assignees;
+        } else if (typeof story.assignees === 'string') {
+          parsedAssignees = story.assignees.split(',').map(a => a.trim()).filter(a => a);
+        }
+      }
+      
       setFormData({
         title: story.title || "",
         description: story.description || "",
         status: story.status || "",
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
-        acceptanceTemplate: Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.some((c) => typeof c === 'string' && (c.includes('Given:') || c.includes('When:') || c.includes('Then:'))) ? 'gwt' : 'numbered',
         storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
-        assignee: story.assignee ? story.assignee : "",
+        assignees: parsedAssignees,
         tags: parsedTags,
       });
-      // If template is GWT initialize structured local state
-      const detectedGwt = Array.isArray(story.acceptanceCriteria) && story.acceptanceCriteria.some((c) => typeof c === 'string' && (c.includes('Given:') || c.includes('When:') || c.includes('Then:')));
-      if (detectedGwt) {
-        const parsed = (story.acceptanceCriteria || []).map((s) => parseStringToGwt(s));
-        setGwtCriteria(parsed.length ? parsed : [{ given: '', when: '', then: '' }]);
-      } else {
-        setGwtCriteria([]);
-      }
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
-            return { text: item, timestamp: new Date().toLocaleString() };
+            return { text: item, timestamp: new Date().toLocaleString(), isFromBackend: true };
           }
           if (item.action) {
             return {
               text: item.action,
               timestamp: item.timestamp || new Date().toLocaleString(),
+              isFromBackend: true,  // Mark as existing backend entry
             };
           }
-          return item;
+          return { ...item, isFromBackend: true };
         });
         setActivity(formattedActivity);
       } else {
@@ -78,69 +92,20 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     setFormData({ ...formData, acceptanceCriteria: updated });
   };
 
-  // Local structured state for GWT template
-  const [gwtCriteria, setGwtCriteria] = useState([]);
-
-  // Convert a GWT object to a single string for storage/preview
-  const combineGwtToString = (g) => {
-    const given = g.given?.trim() || "";
-    const when = g.when?.trim() || "";
-    const then = g.then?.trim() || "";
-    // Use a readable single-line format so previews/list render nicely
-    return `Given: ${given} | When: ${when} | Then: ${then}`;
-  };
-
-  const parseStringToGwt = (str) => {
-    if (!str || typeof str !== 'string') return { given: '', when: '', then: '' };
-    // Try to extract by labels; fallback to putting full text into 'given'
-    const givenMatch = str.match(/Given:\s*([^|]*)/i);
-    const whenMatch = str.match(/When:\s*([^|]*)/i);
-    const thenMatch = str.match(/Then:\s*([^|]*)/i);
-    if (givenMatch || whenMatch || thenMatch) {
-      return {
-        given: givenMatch ? givenMatch[1].trim() : '',
-        when: whenMatch ? whenMatch[1].trim() : '',
-        then: thenMatch ? thenMatch[1].trim() : '',
-      };
-    }
-    return { given: str, when: '', then: '' };
-  };
-
-  const updateGwtCriterion = (index, field, value) => {
-    const newGwt = [...gwtCriteria];
-    newGwt[index] = { ...newGwt[index], [field]: value };
-    setGwtCriteria(newGwt);
-    // keep formData.acceptanceCriteria in sync (as combined strings)
-    const combined = newGwt.map((g) => combineGwtToString(g));
-    setFormData({ ...formData, acceptanceCriteria: combined });
-  };
-
   const addCriterion = () => {
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
       return;
     }
-    if (formData.acceptanceTemplate === 'gwt') {
-      const newGwt = [...gwtCriteria, { given: '', when: '', then: '' }];
-      setGwtCriteria(newGwt);
-      setFormData({ ...formData, acceptanceCriteria: newGwt.map((g) => combineGwtToString(g)) });
-    } else {
-      setFormData({
-        ...formData,
-        acceptanceCriteria: [...formData.acceptanceCriteria, ""],
-      });
-    }
+    setFormData({
+      ...formData,
+      acceptanceCriteria: [...formData.acceptanceCriteria, ""],
+    });
   };
 
   const removeCriterion = (index) => {
-    if (formData.acceptanceTemplate === 'gwt') {
-      const updatedGwt = gwtCriteria.filter((_, i) => i !== index);
-      setGwtCriteria(updatedGwt);
-      setFormData({ ...formData, acceptanceCriteria: updatedGwt.map((g) => combineGwtToString(g)) });
-    } else {
-      const updated = formData.acceptanceCriteria.filter((_, i) => i !== index);
-      setFormData({ ...formData, acceptanceCriteria: updated });
-    }
+    const updated = formData.acceptanceCriteria.filter((_, i) => i !== index);
+    setFormData({ ...formData, acceptanceCriteria: updated });
   };
 
   const handleAddComment = () => {
@@ -151,33 +116,39 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     }
   };
 
+  // Multi-select assignees helpers
+  const toggleAssignee = (name) => {
+    const current = formData.assignees || [];
+    const next = current.includes(name)
+      ? current.filter((n) => n !== name)
+      : [...current, name];
+    setFormData({ ...formData, assignees: next });
+  };
+
+  const clearAssignees = () => {
+    setFormData({ ...formData, assignees: [] });
+  };
+
+  // Form validation - same as NewIdeaForm (only title and description required)
+  const isFormValid =
+    formData.title.trim() !== "" &&
+    formData.description.trim() !== "" &&
+    formData.status !== "";
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Validate required fields
-    if (!formData.title || !formData.title.trim()) {
-      alert("Title is required!");
-      return;
+    if (!isFormValid) return;
+    
+    // If there's an unsent comment in the textarea, add it to activity before saving
+    let finalActivity = [...activity];
+    if (newComment.trim()) {
+      const timestamp = new Date().toLocaleString();
+      finalActivity.push({ text: newComment.trim(), timestamp });
     }
     
-    if (!formData.description || !formData.description.trim()) {
-      alert("Description is required!");
-      return;
-    }
-    
-    if (!formData.status) {
-      alert("Status is required!");
-      return;
-    }
-    
-    // Validate story points if provided
-    if (formData.storyPoints !== '' && formData.storyPoints !== null) {
-      const points = parseInt(formData.storyPoints);
-      if (isNaN(points) || points < 0 || points > 100) {
-        alert("Story points must be a number between 0 and 100!");
-        return;
-      }
-    }
+    // Get only NEW user-added comments (items without isFromBackend flag)
+    const newComments = finalActivity.filter((item) => item.text && !item.isFromBackend);
     
     const submitData = {
       ...story,
@@ -187,23 +158,18 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       // Also send snake_case versions for backend compatibility
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
       story_points: formData.storyPoints ? parseInt(formData.storyPoints) : null,
-      // Send activity - filter to only include items with "text" property (user-added comments)
-      activity: activity.filter((item) => item.text && !item.action),
+      // Send activity - include only NEW user-added comments
+      activity: newComments,
     };
     onSave(submitData);
   };
-
-  const teamMembersWithDefault = [
-    { name: "Unassigned", id: 0, role: "" },
-    ...teamMembers,
-  ];
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-4">
       {/* Title */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="edit-title" className="text-right">
-          Title
+          Title <span className="text-red-500">*</span>
         </Label>
         <Input
           id="edit-title"
@@ -218,7 +184,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       {/* Description */}
       <div className="grid grid-cols-4 items-start gap-4">
         <Label htmlFor="edit-description" className="text-right pt-2">
-          Description
+          Description <span className="text-red-500">*</span>
         </Label>
         <textarea
           id="edit-description"
@@ -236,77 +202,40 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       <div className="grid grid-cols-4 items-start gap-4">
         <Label className="text-right pt-2">Acceptance Criteria</Label>
         <div className="col-span-3 space-y-2">
-          {/* Template toggle */}
-          <div className="flex items-center gap-4 mb-2">
-            <label className="text-sm flex items-center gap-2">
-              <input
-                type="radio"
-                name="ac-template"
-                value="numbered"
-                checked={formData.acceptanceTemplate === 'numbered'}
-                onChange={() => {
-                  setFormData({ ...formData, acceptanceTemplate: 'numbered' });
-                }}
-              />
-              <span className="text-sm">Numbered list</span>
-            </label>
-            <label className="text-sm flex items-center gap-2">
-              <input
-                type="radio"
-                name="ac-template"
-                value="gwt"
-                checked={formData.acceptanceTemplate === 'gwt'}
-                onChange={() => {
-                  // Initialize gwtCriteria from existing strings
-                  const parsed = formData.acceptanceCriteria.map((s) => parseStringToGwt(s));
-                  setGwtCriteria(parsed.length ? parsed : [{ given: '', when: '', then: '' }]);
-                  setFormData({ ...formData, acceptanceTemplate: 'gwt', acceptanceCriteria: parsed.map((g) => combineGwtToString(g)) });
-                }}
-              />
-              <span className="text-sm">Given / When / Then</span>
-            </label>
-          </div>
-
           {formData.acceptanceCriteria.map((criteria, index) => (
-            <div key={index} className="flex gap-2">
-              {formData.acceptanceTemplate === 'gwt' ? (
-                <div className="flex-1 grid grid-cols-3 gap-2">
-                  <Input placeholder="Given..." value={gwtCriteria[index]?.given || ''} onChange={(e) => updateGwtCriterion(index, 'given', e.target.value)} />
-                  <Input placeholder="When..." value={gwtCriteria[index]?.when || ''} onChange={(e) => updateGwtCriterion(index, 'when', e.target.value)} />
-                  <Input placeholder="Then..." value={gwtCriteria[index]?.then || ''} onChange={(e) => updateGwtCriterion(index, 'then', e.target.value)} />
-                </div>
-              ) : (
-                <Input
-                  placeholder={`Criterion ${index + 1}`}
-                  value={criteria}
-                  onChange={(e) => updateCriteria(index, e.target.value)}
-                  className="flex-1"
-                />
-              )}
+            <div key={index} className="flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+              <Input
+                placeholder={`Enter criterion ${index + 1}...`}
+                value={criteria}
+                onChange={(e) => updateCriteria(index, e.target.value)}
+                className="flex-1"
+              />
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={() => removeCriterion(index)}
-                className="shrink-0"
+                className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           ))}
-          <div className="text-xs text-muted-foreground mb-2">
-            {formData.acceptanceCriteria.length}/5 criteria
+          <div className="flex items-center justify-between pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addCriterion}
+              disabled={formData.acceptanceCriteria.length >= 5}
+            >
+              + Add Criterion
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {formData.acceptanceCriteria.length}/5 criteria
+            </span>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={addCriterion}
-            disabled={formData.acceptanceCriteria.length >= 5}
-            className="w-full"
-          >
-            + Add Criterion
-          </Button>
         </div>
       </div>
 
@@ -344,7 +273,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       {/* Status */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="edit-status" className="text-right">
-          Status
+          Status <span className="text-red-500">*</span>
         </Label>
         <select
           id="edit-status"
@@ -361,25 +290,74 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         </select>
       </div>
 
-      {/* Assignee */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="edit-assignee" className="text-right">
-          Assignee
-        </Label>
-        <select
-          id="edit-assignee"
-          className="col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          value={formData.assignee}
-          onChange={(e) =>
-            setFormData({ ...formData, assignee: e.target.value })
-          }
-        >
-          {teamMembersWithDefault.map((member, index) => (
-            <option key={`${member.id}-${index}`} value={member.name}>
-              {member.name}
-            </option>
-          ))}
-        </select>
+      {/* Assignees (Multi-Select) */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label className="text-right pt-2">Assignees</Label>
+        <div className="col-span-3 relative" ref={assigneeRef}>
+          <div
+            onClick={() => setIsAssigneeOpen(!isAssigneeOpen)}
+            className="min-h-[40px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer flex items-center justify-between"
+          >
+            <div className="flex flex-wrap gap-1 flex-1">
+              {(formData.assignees || []).length === 0 ? (
+                <span className="text-muted-foreground">Select assignees...</span>
+              ) : (
+                (formData.assignees || []).map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-0.5 rounded text-xs"
+                  >
+                    {name}
+                    <X
+                      className="h-3 w-3 cursor-pointer hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleAssignee(name);
+                      }}
+                    />
+                  </span>
+                ))
+              )}
+            </div>
+            <div className="flex items-center gap-1 ml-2">
+              {(formData.assignees || []).length > 0 && (
+                <X
+                  className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    clearAssignees();
+                  }}
+                />
+              )}
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          {isAssigneeOpen && (
+            <div className="absolute z-10 mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-auto">
+              {teamMembers.length === 0 ? (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  No team members available
+                </div>
+              ) : (
+                teamMembers.map((member, index) => (
+                  <div
+                    key={`${member.id}-${index}`}
+                    onClick={() => toggleAssignee(member.name)}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={(formData.assignees || []).includes(member.name)}
+                      onChange={() => {}}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-sm">{member.name}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tags */}
@@ -432,7 +410,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
       {/* Submit Button */}
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="submit">Save Changes</Button>
+        <Button type="submit" disabled={!isFormValid}>Save Changes</Button>
       </div>
     </form>
   );

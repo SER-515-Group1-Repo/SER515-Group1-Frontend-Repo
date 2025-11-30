@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { UserCircle2 } from "lucide-react";
+import { UserCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +32,91 @@ const LoginPage = ({ type }) => {
     localStorage.getItem("rememberMe") === "true" || false
   );
   const [errorState, setErrorState] = useState(initialState);
+
+  // Forgot Password Modal State
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1 = email, 2 = new password
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [forgotPasswordError, setForgotPasswordError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleForgotPasswordOpen = () => {
+    setShowForgotPassword(true);
+    setForgotPasswordStep(1);
+    setForgotEmail("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setForgotPasswordError("");
+  };
+
+  const handleForgotPasswordClose = () => {
+    setShowForgotPassword(false);
+    setForgotPasswordStep(1);
+    setForgotEmail("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setForgotPasswordError("");
+  };
+
+  const handleVerifyEmail = async () => {
+    if (!forgotEmail) {
+      setForgotPasswordError("Email is required");
+      return;
+    }
+    if (!emailRegex.test(forgotEmail)) {
+      setForgotPasswordError("Enter a valid email address");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_BASE_URL}/forgot-password`, {
+        email: forgotEmail,
+      });
+      setForgotPasswordError("");
+      setForgotPasswordStep(2);
+    } catch (error) {
+      const statusCode = error?.response?.status;
+      if (statusCode === 404) {
+        setForgotPasswordError("No account found with this email");
+      } else {
+        setForgotPasswordError("Something went wrong. Please try again.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword) {
+      setForgotPasswordError("New password is required");
+      return;
+    }
+    if (newPassword.length < 8) {
+      setForgotPasswordError("Password must be at least 8 characters");
+      return;
+    }
+    if (newPassword !== confirmNewPassword) {
+      setForgotPasswordError("Passwords do not match");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await apiClient.post(`${import.meta.env.VITE_BASE_URL}/reset-password`, {
+        email: forgotEmail,
+        new_password: newPassword,
+      });
+      toastNotify("Password reset successfully! Please log in.", "success");
+      handleForgotPasswordClose();
+    } catch (error) {
+      setForgotPasswordError("Failed to reset password. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleRememberMe = (checked) => {
     if (checked) {
@@ -112,6 +197,12 @@ const LoginPage = ({ type }) => {
           `${import.meta.env.VITE_BASE_URL}/login`,
           formData
         );
+        
+        // Save email if Remember Me is checked
+        if (rememberMe) {
+          localStorage.setItem("userEmail", userData?.email);
+        }
+        
         login(data.access_token);
         window.location.href = "/dashboard";
       } else {
@@ -126,7 +217,34 @@ const LoginPage = ({ type }) => {
       }
     } catch (error) {
       console.error("Error during login/signup:", error);
-      toastNotify(error?.response?.data?.detail || error?.message, "error");
+      
+      // Handle specific error cases
+      const errorDetail = error?.response?.data?.detail;
+      const statusCode = error?.response?.status;
+      
+      if (type === "login") {
+        if (statusCode === 404) {
+          toastNotify("No account found with this email. Please sign up.", "error");
+        } else if (statusCode === 401) {
+          toastNotify("Incorrect password. Please try again.", "error");
+        } else if (errorDetail) {
+          toastNotify(typeof errorDetail === 'string' ? errorDetail : "Login failed. Please try again.", "error");
+        } else {
+          toastNotify("Login failed. Please check your credentials.", "error");
+        }
+      } else {
+        // Signup errors
+        const errorMsg = typeof errorDetail === 'string' ? errorDetail.toLowerCase() : '';
+        if (statusCode === 400 && errorMsg.includes("email")) {
+          toastNotify("This email is already registered. Please log in instead.", "error");
+        } else if (statusCode === 400 && errorMsg.includes("username")) {
+          toastNotify("This username is already taken. Please choose another.", "error");
+        } else if (errorDetail) {
+          toastNotify(typeof errorDetail === 'string' ? errorDetail : "Signup failed. Please try again.", "error");
+        } else {
+          toastNotify("Signup failed. Please try again.", "error");
+        }
+      }
     }
   };
 
@@ -280,12 +398,12 @@ const LoginPage = ({ type }) => {
 
           {type === "login" ? (
             <div className="mt-20 text-center text-sm">
-              <a
-                href="#"
-                className="font-medium text-gray-600 hover:text-black underline"
+              <span
+                className="font-medium text-blue-600 cursor-pointer hover:text-blue-800 hover:underline"
+                onClick={handleForgotPasswordOpen}
               >
-                Forgot Password
-              </a>
+                Forgot Password?
+              </span>
               <p className="mt-2 text-gray-600">
                 New User?{" "}
                 <a
@@ -309,6 +427,118 @@ const LoginPage = ({ type }) => {
               >
                 Existing User?{" "}
               </a>
+            </div>
+          )}
+
+          {/* Forgot Password Modal */}
+          {showForgotPassword && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">
+                    {forgotPasswordStep === 1 ? "Forgot Password" : "Reset Password"}
+                  </h2>
+                  <button
+                    onClick={handleForgotPasswordClose}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {forgotPasswordStep === 1 ? (
+                  <div className="space-y-4">
+                    <p className="text-gray-600 text-sm">
+                      Enter your email address to reset your password.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="forgot-email">Email</Label>
+                      <Input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={forgotEmail}
+                        onChange={(e) => {
+                          setForgotEmail(e.target.value);
+                          setForgotPasswordError("");
+                        }}
+                      />
+                    </div>
+                    {forgotPasswordError && (
+                      <p className="text-red-500 text-sm">{forgotPasswordError}</p>
+                    )}
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={handleForgotPasswordClose}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1 bg-black text-white hover:bg-gray-800"
+                        onClick={handleVerifyEmail}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Verifying..." : "Continue"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-gray-600 text-sm">
+                      Email verified: <strong>{forgotEmail}</strong>
+                      <br />
+                      Enter your new password below.
+                    </p>
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">New Password</Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder="Enter new password (min 8 characters)"
+                        value={newPassword}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          setForgotPasswordError("");
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                      <Input
+                        id="confirm-new-password"
+                        type="password"
+                        placeholder="Re-enter new password"
+                        value={confirmNewPassword}
+                        onChange={(e) => {
+                          setConfirmNewPassword(e.target.value);
+                          setForgotPasswordError("");
+                        }}
+                      />
+                    </div>
+                    {forgotPasswordError && (
+                      <p className="text-red-500 text-sm">{forgotPasswordError}</p>
+                    )}
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setForgotPasswordStep(1)}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        className="flex-1 bg-black text-white hover:bg-gray-800"
+                        onClick={handleResetPassword}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? "Resetting..." : "Reset Password"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

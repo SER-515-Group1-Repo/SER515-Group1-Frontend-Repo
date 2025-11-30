@@ -142,7 +142,7 @@ const DashboardPage = () => {
   const [newIdea, setNewIdea] = useState({
     title: "",
     description: "",
-    assignee: "",
+    assignees: [],
     status: "",
     tags: [],
     acceptanceCriteria: [],
@@ -170,7 +170,7 @@ const DashboardPage = () => {
     setNewIdea({
       title: "",
       description: "",
-      assignee: "",
+      assignees: [],
       status: columnTitle,
       tags: [],
       acceptanceCriteria: [],
@@ -181,23 +181,53 @@ const DashboardPage = () => {
   };
 
   const handleSaveIdea = async () => {
+    // Validate required fields
+    if (!newIdea.title || !newIdea.title.trim()) {
+      toastNotify("Title is required!", "error");
+      return;
+    }
+    
+    if (!newIdea.description || !newIdea.description.trim()) {
+      toastNotify("Description is required!", "error");
+      return;
+    }
+
+    // Validate story points if provided
+    if (newIdea.storyPoints !== null && newIdea.storyPoints !== undefined && newIdea.storyPoints !== "") {
+      const points = parseInt(newIdea.storyPoints);
+      if (isNaN(points) || points < 0 || points > 100) {
+        toastNotify("Story points must be a number between 0 and 100!", "error");
+        return;
+      }
+    }
+
     try {
+      // Filter out empty acceptance criteria
+      const filteredCriteria = (newIdea.acceptanceCriteria || []).filter(c => c && c.trim());
+      
+      const payload = {
+        title: newIdea.title.trim(),
+        description: newIdea.description.trim(),
+        assignees: newIdea.assignees || [],
+        tags: newIdea.tags || [],
+        status: newIdea.status || selectedColumn || "Proposed",
+        acceptance_criteria: filteredCriteria,
+        story_points: newIdea.storyPoints !== null && newIdea.storyPoints !== "" 
+          ? parseInt(newIdea.storyPoints) 
+          : null,
+      };
+
       const { data } = await apiClient.post(
         `${import.meta.env.VITE_BASE_URL}/stories`,
-        {
-          title: newIdea.title,
-          description: newIdea.description,
-          assignee: newIdea.assignee || "Unassigned",
-          tags: newIdea.tags || [],
-          status: newIdea.status || selectedColumn || "Proposed",
-          acceptanceCriteria: newIdea.acceptanceCriteria || [],
-          storyPoints: newIdea.storyPoints,
-        }
+        payload
       );
 
+      // Normalize the response for frontend state
       const userTask = {
         ...data?.story,
-        id: String(nextTaskId.current++),
+        id: data?.story?.id ? String(data.story.id) : String(nextTaskId.current++),
+        acceptanceCriteria: data?.story?.acceptanceCriteria || data?.story?.acceptance_criteria || [],
+        storyPoints: data?.story?.storyPoints ?? data?.story?.story_points ?? null,
       };
 
       const updatedColumns = originalColumnData.map((col) =>
@@ -214,7 +244,7 @@ const DashboardPage = () => {
       setNewIdea({
         title: "",
         description: "",
-        assignee: "",
+        assignees: [],
         status: "",
         tags: [],
         acceptanceCriteria: [],
@@ -224,6 +254,10 @@ const DashboardPage = () => {
       if (err.response && err.response.data && err.response.data.message) {
         console.error(err.response.data.message);
         toastNotify(err.response.data.message, "error");
+      } else if (err.response && err.response.data && err.response.data.detail) {
+        const detail = err.response.data.detail;
+        const msg = typeof detail === 'object' ? detail.message || JSON.stringify(detail) : detail;
+        toastNotify(msg, "error");
       } else {
         console.error("An unexpected error occurred. Please try again.");
         toastNotify("Failed to save idea. Please try again.", "error");
@@ -825,10 +859,10 @@ const DashboardPage = () => {
     }
   };
 
+  // Only title and description are required - assignees is optional
   const isFormValid =
     newIdea.title.trim() !== "" &&
-    newIdea.description.trim() !== "" &&
-    newIdea.assignee.trim() !== "";
+    newIdea.description.trim() !== "";
 
   useEffect(() => {
     if (!hasInitialLoad.current) {
