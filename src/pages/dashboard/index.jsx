@@ -22,6 +22,19 @@ import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
 
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragOverlay,
+} from "@dnd-kit/core";
+import {
+  sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+
 const initialColumns = [
   {
     title: "Proposed",
@@ -165,6 +178,242 @@ const DashboardPage = () => {
   // NEW: Preview Modal State
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewTask, setPreviewTask] = useState(null);
+
+  // Drag and Drop State
+  const [activeId, setActiveId] = useState(null);
+
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px movement before drag starts
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Find task by ID across all columns
+  const findTaskById = (taskId) => {
+    for (const column of columnData) {
+      const task = column.tasks.find((t) => String(t.id) === String(taskId));
+      if (task) return { task, column: column.title };
+    }
+    return null;
+  };
+
+  // Handle drag end event
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
+
+    const activeTask = findTaskById(active.id);
+    if (!activeTask) {
+      setActiveId(null);
+      return;
+    }
+
+    // Prevent concurrent operations
+    if (isSaving || operationInProgress) {
+      setActiveId(null);
+      toastNotify("Another operation is in progress. Please wait.", "warning");
+      return;
+    }
+
+    const sourceColumnTitle = activeTask.column;
+    const sourceColumn = columnData.find(
+      (col) => col.title === sourceColumnTitle
+    );
+    const sourceIndex = sourceColumn
+      ? sourceColumn.tasks.findIndex((t) => String(t.id) === String(active.id))
+      : -1;
+
+    // Check if dropping on a column or on another task
+    const overColumn = columnData.find(
+      (col) => col.title === over.id
+    );
+    const overTask = findTaskById(over.id);
+
+    let targetColumnTitle;
+    let targetIndex = -1;
+
+    if (overColumn) {
+      // Dropped directly on a column
+      targetColumnTitle = overColumn.title;
+      targetIndex = overColumn.tasks.length; // Add to end
+    } else if (overTask) {
+      // Dropped on another task
+      targetColumnTitle = overTask.column;
+      const targetColumn = columnData.find(
+        (col) => col.title === targetColumnTitle
+      );
+      if (targetColumn) {
+        const overIndex = targetColumn.tasks.findIndex(
+          (t) => String(t.id) === String(over.id)
+        );
+        // Place after the task we're over, or at its position if same column
+        targetIndex = sourceColumnTitle === targetColumnTitle && sourceIndex < overIndex
+          ? overIndex
+          : overIndex + 1;
+      }
+    } else {
+      setActiveId(null);
+      return;
+    }
+
+    // No change needed
+    if (
+      sourceColumnTitle === targetColumnTitle &&
+      (sourceIndex === targetIndex || 
+       (targetIndex === sourceIndex + 1 && sourceIndex !== -1))
+    ) {
+      setActiveId(null);
+      return;
+    }
+
+    // Store original state for rollback
+    const originalState = JSON.parse(JSON.stringify(columnData));
+
+    // OPTIMISTIC UPDATE: Immediately update UI
+    setColumnData((prevColumns) => {
+      let newColumns = prevColumns.map((col) => ({
+        ...col,
+        tasks: col.tasks.filter((t) => String(t.id) !== String(active.id)),
+      }));
+
+      const targetCol = newColumns.find(
+        (col) => col.title === targetColumnTitle
+      );
+
+      if (targetCol && activeTask.task) {
+        if (sourceColumnTitle === targetColumnTitle) {
+          // Reordering within same column - use arrayMove logic
+          const newTasks = [...targetCol.tasks];
+          // Adjust targetIndex if we removed the active item earlier
+          const adjustedIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
+          newTasks.splice(Math.max(0, adjustedIndex), 0, activeTask.task);
+          targetCol.tasks = newTasks;
+        } else {
+          // Moving to different column
+          const newTasks = [...targetCol.tasks];
+          newTasks.splice(Math.min(targetIndex, newTasks.length), 0, activeTask.task);
+          targetCol.tasks = newTasks;
+        }
+      }
+
+      return newColumns;
+    });
+
+    setActiveId(null);
+    setIsSaving(true);
+    setOperationInProgress("drag-drop");
+
+    // Determine if status changed
+    const statusChanged = sourceColumnTitle !== targetColumnTitle;
+
+    try {
+      if (statusChanged) {
+        // Update task status via API
+        const updatePayload = {
+          ...activeTask.task,
+          status: targetColumnTitle,
+          acceptance_criteria:
+            activeTask.task.acceptance_criteria ||
+            activeTask.task.acceptanceCriteria ||
+            [],
+          story_points:
+            activeTask.task.story_points !== undefined
+              ? activeTask.task.story_points
+              : activeTask.task.storyPoints,
+          acceptanceCriteria:
+            activeTask.task.acceptanceCriteria ||
+            activeTask.task.acceptance_criteria ||
+            [],
+          storyPoints:
+            activeTask.task.storyPoints !== undefined
+              ? activeTask.task.storyPoints
+              : activeTask.task.story_points,
+        };
+
+        const response = await apiClient.put(
+          `${import.meta.env.VITE_BASE_URL}/stories/${activeTask.task.id}`,
+          updatePayload
+        );
+
+        if (!response.data || !response.data.story) {
+          throw new Error("Invalid response from server");
+        }
+
+        let updatedTask = response.data.story;
+        updatedTask = {
+          ...updatedTask,
+          acceptanceCriteria: Array.isArray(updatedTask.acceptance_criteria)
+            ? updatedTask.acceptance_criteria
+            : Array.isArray(updatedTask.acceptanceCriteria)
+            ? updatedTask.acceptanceCriteria
+            : [],
+          storyPoints:
+            updatedTask.story_points !== undefined &&
+            updatedTask.story_points !== null
+              ? updatedTask.story_points
+              : updatedTask.storyPoints !== undefined &&
+                updatedTask.storyPoints !== null
+              ? updatedTask.storyPoints
+              : null,
+        };
+
+        // Update with server response
+        setColumnData((prevColumns) => {
+          const newColumns = prevColumns.map((col) => ({
+            ...col,
+            tasks: col.tasks.filter(
+              (t) => String(t.id) !== String(activeTask.task.id)
+            ),
+          }));
+
+          const targetCol = newColumns.find(
+            (col) => col.title === updatedTask.status
+          );
+          if (targetCol) {
+            if (targetIndex >= 0 && targetIndex < targetCol.tasks.length) {
+              targetCol.tasks.splice(targetIndex, 0, updatedTask);
+            } else {
+              targetCol.tasks.push(updatedTask);
+            }
+          }
+
+          return newColumns;
+        });
+
+        toastNotify("Task moved successfully!", "success");
+      } else {
+        // Only reordering within same column - UI already updated optimistically
+        // Note: Backend doesn't store order, so this is just UI reordering
+        toastNotify("Task reordered!", "success");
+      }
+    } catch (err) {
+      console.error("Failed to update task:", err);
+      // Rollback optimistic update
+      setColumnData(originalState);
+      const errorMsg =
+        err.response?.data?.detail ||
+        err.message ||
+        "Failed to move task. Please try again.";
+      toastNotify(errorMsg, "error");
+    } finally {
+      setIsSaving(false);
+      setOperationInProgress(null);
+    }
+  };
+
+  const handleDragStart = (event) => {
+    setActiveId(event.active.id);
+  };
 
   const handleOpenCreateModal = (columnTitle) => {
     setNewIdea({
@@ -878,24 +1127,54 @@ const DashboardPage = () => {
           </div>
         </div>
       ) : (
-        <section className="flex flex-grow p-4 space-x-4 overflow-scroll">
-          {filteredColumns.map((column, index) => (
-            <TaskColumn
-              key={`${column.title}-${index}`}
-              title={column.title}
-              dotColor={column.dotColor}
-              tasks={column.tasks}
-              onAddTask={handleOpenCreateModal}
-              onEdit={handleEditTask}
-              onDrop={handleDropTask}
-              onAssign={handleEditTask}
-              onDelete={handleDeleteTask}
-              onMoveToTop={handleMoveToTop}
-              isOperationInProgress={isSaving || isLoading}
-              onPreview={handlePreviewTask}
-            />
-          ))}
-        </section>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <section className="flex flex-grow p-4 space-x-4 overflow-scroll">
+            {filteredColumns.map((column, index) => (
+              <TaskColumn
+                key={`${column.title}-${index}`}
+                id={column.title}
+                title={column.title}
+                dotColor={column.dotColor}
+                tasks={column.tasks}
+                onAddTask={handleOpenCreateModal}
+                onEdit={handleEditTask}
+                onDrop={handleDropTask}
+                onAssign={handleEditTask}
+                onDelete={handleDeleteTask}
+                onMoveToTop={handleMoveToTop}
+                isOperationInProgress={isSaving || isLoading}
+                onPreview={handlePreviewTask}
+              />
+            ))}
+          </section>
+          <DragOverlay>
+            {activeId ? (
+              (() => {
+                const activeTask = findTaskById(activeId);
+                if (!activeTask) return null;
+                return (
+                  <div className="rounded-lg border bg-card text-card-foreground shadow-lg p-4 space-y-3 opacity-90 rotate-3">
+                    <div className="text-xs font-semibold text-primary">
+                      <span>#{activeTask.task?.id || ""}</span>{" "}
+                      {activeTask.task?.title || "Task"}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {activeTask.task?.description
+                        ? activeTask.task.description.substring(0, 60) +
+                          (activeTask.task.description.length > 60 ? "..." : "")
+                        : ""}
+                    </p>
+                  </div>
+                );
+              })()
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* Create New Idea Modal */}

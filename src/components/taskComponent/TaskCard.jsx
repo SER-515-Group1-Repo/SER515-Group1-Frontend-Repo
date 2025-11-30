@@ -8,20 +8,32 @@ import {
   User,
   Tag,
   Eye,
+  GripVertical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPreview, isOperationInProgress = false }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const handleDragStart = (e) => {
-    if (isOperationInProgress) {
-      e.preventDefault();
-      return; // Prevent drag during operations
-    }
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("application/json", JSON.stringify(task));
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task.id,
+    disabled: isOperationInProgress,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   useEffect(() => {
@@ -82,12 +94,21 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
 
   return (
     <div
-      className="rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-3 relative cursor-pointer hover:shadow-md transition-shadow"
-      draggable
-      onDragStart={handleDragStart}
+      ref={setNodeRef}
+      style={style}
+      className={`rounded-lg border bg-card text-card-foreground shadow-sm p-4 space-y-3 relative cursor-pointer hover:shadow-md transition-shadow ${
+        isDragging ? "ring-2 ring-blue-500" : ""
+      }`}
     >
       {/* Header with Title and Menu */}
       <div className="flex items-start justify-between gap-2">
+        <div
+          className="flex items-center gap-1 cursor-grab active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+        </div>
         <div
           className="flex-1 cursor-pointer group"
           onClick={handlePreview}
