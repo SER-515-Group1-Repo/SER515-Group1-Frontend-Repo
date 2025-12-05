@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, memo } from "react";
 import {
   MoreHorizontal,
   Pencil,
@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPreview, isOperationInProgress = false }) {
+const TaskCardComponent = ({ task, onEdit, onAssign, onDelete, onMoveToTop, onPreview, isOperationInProgress = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -181,4 +181,18 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
       )}
     </div>
   );
-}
+};
+
+// Memoize TaskCard to prevent unnecessary re-renders
+export const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
+  // Custom comparison function for better performance
+  return (
+    prevProps.task?.id === nextProps.task?.id &&
+    prevProps.task?.status === nextProps.task?.status &&
+    prevProps.task?.title === nextProps.task?.title &&
+    prevProps.task?.description === nextProps.task?.description &&
+    prevProps.task?.assignee === nextProps.task?.assignee &&
+    JSON.stringify(prevProps.task?.tags) === JSON.stringify(nextProps.task?.tags) &&
+    prevProps.isOperationInProgress === nextProps.isOperationInProgress
+  );
+});
