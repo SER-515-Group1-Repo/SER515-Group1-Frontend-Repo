@@ -21,6 +21,7 @@ import apiClient from "@/api/axios";
 import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
+import { STORY_POINTS_OPTIONS } from "@/lib/constants";
 
 const initialColumns = [
   {
@@ -192,11 +193,11 @@ const DashboardPage = () => {
       return;
     }
 
-    // Validate story points if provided
+    // Validate story points if provided (must be Fibonacci sequence)
     if (newIdea.storyPoints !== null && newIdea.storyPoints !== undefined && newIdea.storyPoints !== "") {
       const points = parseInt(newIdea.storyPoints);
-      if (isNaN(points) || points < 0 || points > 100) {
-        toastNotify("Story points must be a number between 0 and 100!", "error");
+      if (isNaN(points) || !STORY_POINTS_OPTIONS.includes(points)) {
+        toastNotify(`Story points must be a Fibonacci number: ${STORY_POINTS_OPTIONS.join(', ')}`, "error");
         return;
       }
     }
