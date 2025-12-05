@@ -1,6 +1,11 @@
-import { Plus, MoreHorizontal } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Plus, MoreHorizontal, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "@/components/taskComponent/TaskCard";
+
+// Performance threshold: use pagination for columns with more than this many tasks
+const PAGINATION_THRESHOLD = 20;
+const INITIAL_ITEMS_TO_SHOW = 20;
 
 export function TaskColumn({
   title,
@@ -15,6 +20,26 @@ export function TaskColumn({
   onPreview,
   isOperationInProgress = false,
 }) {
+  const [showAll, setShowAll] = useState(false);
+  
+  // Reset showAll when tasks change significantly (e.g., after filter/search)
+  useEffect(() => {
+    if (tasks.length <= PAGINATION_THRESHOLD) {
+      setShowAll(false);
+    }
+  }, [tasks.length]);
+  
+  // Memoize visible tasks to prevent unnecessary re-renders
+  const visibleTasks = useMemo(() => {
+    if (tasks.length <= PAGINATION_THRESHOLD || showAll) {
+      return tasks;
+    }
+    return tasks.slice(0, INITIAL_ITEMS_TO_SHOW);
+  }, [tasks, showAll]);
+
+  const hasMoreTasks = tasks.length > INITIAL_ITEMS_TO_SHOW && !showAll;
+  const remainingCount = tasks.length - INITIAL_ITEMS_TO_SHOW;
+
   const handleDragOver = (e) => {
     if (isOperationInProgress) return; // Prevent drag during operations
     e.preventDefault();
@@ -52,10 +77,14 @@ export function TaskColumn({
         <div className="flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full ${dotColor}`} />
           <h2 className="font-semibold text-foreground">{title}</h2>
+          {tasks.length > 0 && (
+            <span className="text-xs text-gray-500 bg-gray-200 px-2 py-0.5 rounded-full">
+              {tasks.length}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center">
-          {}
           <Button
             variant="ghost"
             size="icon"
@@ -72,19 +101,35 @@ export function TaskColumn({
 
       {/* Column Body */}
       <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-1">
-        {tasks.length > 0 ? (
-          tasks.map((task, index) => (
-            <TaskCard
-              key={`${task.id}-${index}`}
-              task={task}
-              onEdit={onEdit}
-              onAssign={onAssign}
-              onDelete={onDelete}
-              onMoveToTop={onMoveToTop}
-              onPreview={onPreview}
-              isOperationInProgress={isOperationInProgress}
-            />
-          ))
+        {visibleTasks.length > 0 ? (
+          <>
+            {visibleTasks.map((task, index) => (
+              <TaskCard
+                key={`${task.id}-${index}`}
+                task={task}
+                onEdit={onEdit}
+                onAssign={onAssign}
+                onDelete={onDelete}
+                onMoveToTop={onMoveToTop}
+                onPreview={onPreview}
+                isOperationInProgress={isOperationInProgress}
+              />
+            ))}
+            {hasMoreTasks && (
+              <div className="text-center pt-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAll(true)}
+                  className="w-full text-xs"
+                  disabled={isOperationInProgress}
+                >
+                  <ChevronDown className="w-3 h-3 mr-1" />
+                  Show {remainingCount} more
+                </Button>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-sm text-gray-400 text-center mt-4">
             No tasks yet.

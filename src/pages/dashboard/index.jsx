@@ -740,11 +740,33 @@ const DashboardPage = () => {
           return;
         }
 
-        setError(
-          err.response?.data?.detail ||
-            err.message ||
-            "Failed to load ideas. Please try again later."
-        );
+        // Enhanced error handling with better categorization
+        let errorMessage = "Failed to load stories. Please try again later.";
+        
+        if (err.response) {
+          // Server responded with error status
+          const status = err.response.status;
+          if (status === 401) {
+            errorMessage = "Authentication failed. Please log in again.";
+          } else if (status === 403) {
+            errorMessage = "You don't have permission to view stories.";
+          } else if (status === 404) {
+            errorMessage = "Stories endpoint not found. Please contact support.";
+          } else if (status >= 500) {
+            errorMessage = "Server error. Please try again in a moment.";
+          } else if (err.response.data?.detail) {
+            errorMessage = err.response.data.detail;
+          } else if (err.response.data?.message) {
+            errorMessage = err.response.data.message;
+          }
+        } else if (err.request) {
+          // Request was made but no response received
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+
+        setError(errorMessage);
         if (searchTerm && searchTerm.trim() !== "") {
           setColumnData(originalColumnData);
         } else {
@@ -814,12 +836,29 @@ const DashboardPage = () => {
       });
       setColumnData(newBoard);
     } catch (err) {
-      setError(
-        err.response?.data?.detail ||
-          err.message ||
-          "Failed to load filtered ideas. Please try again later."
-      );
+      // Enhanced error handling for filters
+      let errorMessage = "Failed to load filtered stories. Please try again later.";
+      
+      if (err.response) {
+        const status = err.response.status;
+        if (status === 401) {
+          errorMessage = "Authentication failed. Please log in again.";
+        } else if (status >= 500) {
+          errorMessage = "Server error. Please try again in a moment.";
+        } else if (err.response.data?.detail) {
+          errorMessage = err.response.data.detail;
+        } else if (err.response.data?.message) {
+          errorMessage = err.response.data.message;
+        }
+      } else if (err.request) {
+        errorMessage = "Network error. Please check your connection and try again.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
       setColumnData(initialColumns);
+      toastNotify(errorMessage, "error");
     } finally {
       setIsLoading(false);
     }
@@ -854,6 +893,9 @@ const DashboardPage = () => {
 
   const filteredColumns = applyFilters(columnData, filters);
 
+  // Check if backlog is completely empty (all columns have no tasks)
+  const isBacklogEmpty = filteredColumns.every((col) => col.tasks.length === 0);
+
   return (
     <div className="flex flex-col h-screen bg-white">
       <Header onCreateIdeaClick={handleOpenCreateModal} />
@@ -863,39 +905,106 @@ const DashboardPage = () => {
       />
       {isLoading ? (
         <div className="flex flex-grow items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-500 mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Loading stories...</p>
+          </div>
         </div>
       ) : error ? (
         <div className="flex flex-grow items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-500 mb-2">{error}</p>
+          <div className="text-center max-w-md">
+            <div className="text-red-500 mb-4">
+              <svg
+                className="w-16 h-16 mx-auto mb-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <p className="text-red-500 mb-2 font-medium">Failed to load stories</p>
+            <p className="text-sm text-gray-600 mb-4">{error}</p>
             <button
               onClick={() => fetchIdeas()}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
             >
               Retry
             </button>
           </div>
         </div>
+      ) : isBacklogEmpty ? (
+        <div className="flex flex-grow items-center justify-center">
+          <div className="text-center max-w-md">
+            <div className="text-gray-400 mb-4">
+              <svg
+                className="w-24 h-24 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No stories yet
+            </h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Get started by creating your first user story. Click the "+" button in any column to add a new story.
+            </p>
+            <button
+              onClick={() => handleOpenCreateModal("Proposed")}
+              className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              Create Your First Story
+            </button>
+          </div>
+        </div>
       ) : (
-        <section className="flex flex-grow p-4 space-x-4 overflow-scroll">
-          {filteredColumns.map((column, index) => (
-            <TaskColumn
-              key={`${column.title}-${index}`}
-              title={column.title}
-              dotColor={column.dotColor}
-              tasks={column.tasks}
-              onAddTask={handleOpenCreateModal}
-              onEdit={handleEditTask}
-              onDrop={handleDropTask}
-              onAssign={handleEditTask}
-              onDelete={handleDeleteTask}
-              onMoveToTop={handleMoveToTop}
-              isOperationInProgress={isSaving || isLoading}
-              onPreview={handlePreviewTask}
-            />
-          ))}
-        </section>
+        <div className="relative flex flex-grow">
+          <section className="flex flex-grow p-4 space-x-4 overflow-scroll">
+            {filteredColumns.map((column, index) => (
+              <TaskColumn
+                key={`${column.title}-${index}`}
+                title={column.title}
+                dotColor={column.dotColor}
+                tasks={column.tasks}
+                onAddTask={handleOpenCreateModal}
+                onEdit={handleEditTask}
+                onDrop={handleDropTask}
+                onAssign={handleEditTask}
+                onDelete={handleDeleteTask}
+                onMoveToTop={handleMoveToTop}
+                isOperationInProgress={isSaving || isLoading}
+                onPreview={handlePreviewTask}
+              />
+            ))}
+          </section>
+          {/* Loading overlay for operations */}
+          {isSaving && operationInProgress && (
+            <div className="absolute inset-0 bg-black bg-opacity-10 flex items-center justify-center z-10">
+              <div className="bg-white rounded-lg shadow-lg p-4 flex items-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <span className="text-sm text-gray-700">
+                  {operationInProgress === "save" && "Saving story..."}
+                  {operationInProgress === "delete" && "Deleting story..."}
+                  {operationInProgress === "drag-drop" && "Moving story..."}
+                  {!["save", "delete", "drag-drop"].includes(operationInProgress) && "Processing..."}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Create New Idea Modal */}
