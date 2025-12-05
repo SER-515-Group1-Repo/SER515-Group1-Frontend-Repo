@@ -46,13 +46,17 @@ const NewIdeaForm = ({
   };
 
   const removeCriterion = (index) => {
-    const updated = (newIdea.acceptanceCriteria || []).filter((_, i) => i !== index);
+    const updated = (newIdea.acceptanceCriteria || []).filter(
+      (_, i) => i !== index
+    );
     setNewIdea({ ...newIdea, acceptanceCriteria: updated });
   };
 
   // Multi-select assignees
-  const selectedAssignees = Array.isArray(newIdea.assignees) ? newIdea.assignees : [];
-  
+  const selectedAssignees = Array.isArray(newIdea.assignees)
+    ? newIdea.assignees
+    : [];
+
   const toggleAssignee = (name) => {
     const current = selectedAssignees;
     const next = current.includes(name)
@@ -106,7 +110,9 @@ const NewIdeaForm = ({
         <div className="col-span-3 space-y-2">
           {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
             <div key={index} className="flex gap-2 items-center">
-              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+              <span className="text-sm text-muted-foreground w-6">
+                {index + 1}.
+              </span>
               <Input
                 placeholder={`Enter criterion ${index + 1}...`}
                 value={criteria}
@@ -167,7 +173,9 @@ const NewIdeaForm = ({
               }
             }}
           />
-          <p className="text-xs text-muted-foreground mt-1">Valid range: 0-100</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Valid range: 0-100
+          </p>
         </div>
       </div>
 
@@ -200,7 +208,9 @@ const NewIdeaForm = ({
           >
             <div className="flex flex-wrap gap-1 flex-1">
               {selectedAssignees.length === 0 ? (
-                <span className="text-muted-foreground">Select assignees...</span>
+                <span className="text-muted-foreground">
+                  Select assignees...
+                </span>
               ) : (
                 selectedAssignees.map((name) => (
                   <span
