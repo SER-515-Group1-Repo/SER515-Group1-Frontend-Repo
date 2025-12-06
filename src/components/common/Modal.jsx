@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 /**
  * A reusable Modal component built on top of ShadCN's Dialog.
@@ -24,13 +25,14 @@ export function Modal({
   onClose,
   title,
   description,
+  className,
   children,
   footer,
 }) {
   // The onOpenChange callback is the key to controlling the dialog from a parent
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className={cn("sm:max-w-[425px]", className)}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}

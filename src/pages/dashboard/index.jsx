@@ -187,25 +187,36 @@ const DashboardPage = () => {
       toastNotify("Title is required!", "error");
       return;
     }
-    
+
     if (!newIdea.description || !newIdea.description.trim()) {
       toastNotify("Description is required!", "error");
       return;
     }
 
     // Validate story points if provided (must be Fibonacci sequence)
-    if (newIdea.storyPoints !== null && newIdea.storyPoints !== undefined && newIdea.storyPoints !== "") {
+    if (
+      newIdea.storyPoints !== null &&
+      newIdea.storyPoints !== undefined &&
+      newIdea.storyPoints !== ""
+    ) {
       const points = parseInt(newIdea.storyPoints);
       if (isNaN(points) || !STORY_POINTS_OPTIONS.includes(points)) {
-        toastNotify(`Story points must be a Fibonacci number: ${STORY_POINTS_OPTIONS.join(', ')}`, "error");
+        toastNotify(
+          `Story points must be a Fibonacci number: ${STORY_POINTS_OPTIONS.join(
+            ", "
+          )}`,
+          "error"
+        );
         return;
       }
     }
 
     try {
       // Filter out empty acceptance criteria
-      const filteredCriteria = (newIdea.acceptanceCriteria || []).filter(c => c && c.trim());
-      
+      const filteredCriteria = (newIdea.acceptanceCriteria || []).filter(
+        (c) => c && c.trim()
+      );
+
       const payload = {
         title: newIdea.title.trim(),
         description: newIdea.description.trim(),
@@ -213,9 +224,10 @@ const DashboardPage = () => {
         tags: newIdea.tags || [],
         status: newIdea.status || selectedColumn || "Proposed",
         acceptance_criteria: filteredCriteria,
-        story_points: newIdea.storyPoints !== null && newIdea.storyPoints !== "" 
-          ? parseInt(newIdea.storyPoints) 
-          : null,
+        story_points:
+          newIdea.storyPoints !== null && newIdea.storyPoints !== ""
+            ? parseInt(newIdea.storyPoints)
+            : null,
       };
 
       const { data } = await apiClient.post(
@@ -226,9 +238,15 @@ const DashboardPage = () => {
       // Normalize the response for frontend state
       const userTask = {
         ...data?.story,
-        id: data?.story?.id ? String(data.story.id) : String(nextTaskId.current++),
-        acceptanceCriteria: data?.story?.acceptanceCriteria || data?.story?.acceptance_criteria || [],
-        storyPoints: data?.story?.storyPoints ?? data?.story?.story_points ?? null,
+        id: data?.story?.id
+          ? String(data.story.id)
+          : String(nextTaskId.current++),
+        acceptanceCriteria:
+          data?.story?.acceptanceCriteria ||
+          data?.story?.acceptance_criteria ||
+          [],
+        storyPoints:
+          data?.story?.storyPoints ?? data?.story?.story_points ?? null,
       };
 
       const updatedColumns = originalColumnData.map((col) =>
@@ -255,9 +273,16 @@ const DashboardPage = () => {
       if (err.response && err.response.data && err.response.data.message) {
         console.error(err.response.data.message);
         toastNotify(err.response.data.message, "error");
-      } else if (err.response && err.response.data && err.response.data.detail) {
+      } else if (
+        err.response &&
+        err.response.data &&
+        err.response.data.detail
+      ) {
         const detail = err.response.data.detail;
-        const msg = typeof detail === 'object' ? detail.message || JSON.stringify(detail) : detail;
+        const msg =
+          typeof detail === "object"
+            ? detail.message || JSON.stringify(detail)
+            : detail;
         toastNotify(msg, "error");
       } else {
         console.error("An unexpected error occurred. Please try again.");
@@ -391,7 +416,16 @@ const DashboardPage = () => {
         return col;
       });
     });
-    toastNotify(`Sorted by ${sortBy === "storyPoints" ? "story points" : sortBy === "dateCreated" ? "date created" : "title"}`, "success");
+    toastNotify(
+      `Sorted by ${
+        sortBy === "storyPoints"
+          ? "story points"
+          : sortBy === "dateCreated"
+          ? "date created"
+          : "title"
+      }`,
+      "success"
+    );
   };
 
   // NEW: Handle Drop Task (Drag and Drop to change status)
@@ -893,8 +927,7 @@ const DashboardPage = () => {
 
   // Only title and description are required - assignees is optional
   const isFormValid =
-    newIdea.title.trim() !== "" &&
-    newIdea.description.trim() !== "";
+    newIdea.title.trim() !== "" && newIdea.description.trim() !== "";
 
   useEffect(() => {
     if (!hasInitialLoad.current) {
@@ -972,6 +1005,7 @@ const DashboardPage = () => {
           onClose={() => setIsModalOpen(false)}
           title="Create New Idea"
           description="Fill in the details for your new idea. Click save when you're done."
+          className="sm:max-w-3xl"
           footer={
             <>
               <Button variant="outline" onClick={() => setIsModalOpen(false)}>
