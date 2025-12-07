@@ -212,6 +212,86 @@ const DashboardPage = () => {
     setIsModalOpen(true);
   };
 
+  const handleExportClick = async () => {
+    try {
+      // Find the "Sprint Ready" column
+      const sprintReadyColumn = columnData.find(
+        (col) => col.title === "Sprint Ready"
+      );
+
+      if (!sprintReadyColumn || sprintReadyColumn.tasks.length === 0) {
+        toastNotify("No ideas in Sprint Ready column to export", "warning");
+        return;
+      }
+
+      // Prepare CSV data
+      const headers = [
+        "ID",
+        "Title",
+        "Description",
+        "Status",
+        "Story Points",
+        "Assignees",
+        "Tags",
+        "Acceptance Criteria",
+        "Created Date",
+      ];
+
+      const csvContent = [
+        headers.join(","),
+        ...sprintReadyColumn.tasks.map((task) => {
+          const assignees = Array.isArray(task.assignees)
+            ? task.assignees.join("; ")
+            : "";
+          const tags = Array.isArray(task.tags) ? task.tags.join("; ") : "";
+          const criteria = Array.isArray(
+            task.acceptanceCriteria || task.acceptance_criteria
+          )
+            ? (task.acceptanceCriteria || task.acceptance_criteria).join("; ")
+            : "";
+
+          return [
+            task.id || "",
+            `"${(task.title || "").replace(/"/g, '""')}"`,
+            `"${(task.description || "").replace(/"/g, '""')}"`,
+            task.status || "",
+            task.storyPoints || task.story_points || "",
+            `"${assignees}"`,
+            `"${tags}"`,
+            `"${criteria}"`,
+            task.created_at || "",
+          ].join(",");
+        }),
+      ].join("\n");
+
+      // Create blob and download
+      const blob = new Blob([csvContent], {
+        type: "text/csv;charset=utf-8;",
+      });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+
+      link.setAttribute("href", url);
+      link.setAttribute(
+        "download",
+        `sprint-ready-ideas-${new Date().toISOString().split("T")[0]}.csv`
+      );
+      link.style.visibility = "hidden";
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toastNotify(
+        `Successfully exported ${sprintReadyColumn.tasks.length} ideas`,
+        "success"
+      );
+    } catch (error) {
+      console.error("Failed to export ideas:", error);
+      toastNotify("Failed to export ideas", "error");
+    }
+  };
+
   const handleSaveIdea = async () => {
     // Validate required fields
     if (!newIdea.title || !newIdea.title.trim()) {
@@ -253,9 +333,9 @@ const DashboardPage = () => {
         (d) => d && d.trim()
       );
 
-      const filteredRefinementDependencies = (newIdea.refinementDependencies || []).filter(
-        (d) => d && d.trim()
-      );
+      const filteredRefinementDependencies = (
+        newIdea.refinementDependencies || []
+      ).filter((d) => d && d.trim());
 
       const payload = {
         title: newIdea.title.trim(),
@@ -269,16 +349,22 @@ const DashboardPage = () => {
             ? parseInt(newIdea.storyPoints)
             : null,
         // Validation fields for status transitions
-        bv: newIdea.bv !== null && newIdea.bv !== "" ? parseInt(newIdea.bv) : null,
-        refinement_session_scheduled: newIdea.refinementSessionScheduled || false,
+        bv:
+          newIdea.bv !== null && newIdea.bv !== ""
+            ? parseInt(newIdea.bv)
+            : null,
+        refinement_session_scheduled:
+          newIdea.refinementSessionScheduled || false,
         groomed: newIdea.groomed || false,
         dependencies: filteredDependencies,
         session_documented: newIdea.sessionDocumented || false,
         refinement_dependencies: filteredRefinementDependencies,
         team_approval: newIdea.teamApproval || false,
         po_approval: newIdea.poApproval || false,
-        sprint_capacity: newIdea.sprintCapacity !== null && newIdea.sprintCapacity !== "" 
-          ? parseInt(newIdea.sprintCapacity) : null,
+        sprint_capacity:
+          newIdea.sprintCapacity !== null && newIdea.sprintCapacity !== ""
+            ? parseInt(newIdea.sprintCapacity)
+            : null,
         skills_available: newIdea.skillsAvailable || false,
         team_commits: newIdea.teamCommits || false,
         tasks_identified: newIdea.tasksIdentified || false,
@@ -1022,7 +1108,10 @@ const DashboardPage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-white">
-      <Header onCreateIdeaClick={handleOpenCreateModal} />
+      <Header
+        onCreateIdeaClick={handleOpenCreateModal}
+        onExportClick={handleExportClick}
+      />
       <SearchBar
         onFilter={handleFilter}
         onFiltersChange={handleFiltersChange}
