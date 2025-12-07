@@ -93,6 +93,20 @@ From the root of the **`SER515-Group1-Backend-Repo`** directory, run the followi
 docker-compose up --build
 ```
 
+---
+
+## ☁️ Deploying Frontend to Render
+
+This repository includes a `render.yaml` manifest that configures the project for deployment on Render as a static site.
+
+Key points:
+- The `buildCommand` is `npm ci && npm run build` and the output directory is `dist`.
+- Set `VITE_BASE_URL` (environment variable) in Render to point to your backend URL (e.g., `https://your-backend.onrender.com`) so the frontend API calls work in production.
+- For additional tuning (custom domain, caching, headers), configure those via the Render dashboard.
+
+Detailed steps are available in `RENDER_DEPLOY.md`.
+
+
 - `--build`: This flag tells Docker Compose to build the images for the frontend and backend from their respective `Dockerfiles` before starting the services.
 
 This single command will:
