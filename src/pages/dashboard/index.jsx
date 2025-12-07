@@ -22,6 +22,7 @@ import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
 import { STORY_POINTS_OPTIONS } from "@/lib/constants";
+import { useAuth } from "@/context/AuthContext";
 
 const initialColumns = [
   {
@@ -129,6 +130,7 @@ const queryToFilters = (search) => {
 };
 
 const DashboardPage = () => {
+  const { currentUser } = useAuth();
   const [teamMembers, setTeamMembers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState("");
@@ -149,6 +151,7 @@ const DashboardPage = () => {
     acceptanceCriteria: [],
     storyPoints: null,
   });
+  const [hasAutoSelectedAssignee, setHasAutoSelectedAssignee] = useState(false);
   const [filters, setFilters] = useState(null);
 
   const nextTaskId = useRef(
@@ -167,16 +170,27 @@ const DashboardPage = () => {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewTask, setPreviewTask] = useState(null);
 
+  const userDisplayName =
+    currentUser?.name ||
+    currentUser?.fullName ||
+    currentUser?.full_name ||
+    currentUser?.username ||
+    currentUser?.userName ||
+    currentUser?.email ||
+    "";
+
   const handleOpenCreateModal = (columnTitle) => {
+    const defaultAssignees = userDisplayName ? [userDisplayName] : [];
     setNewIdea({
       title: "",
       description: "",
-      assignees: [],
+      assignees: defaultAssignees,
       status: columnTitle,
       tags: [],
       acceptanceCriteria: [],
       storyPoints: null,
     });
+    setHasAutoSelectedAssignee(defaultAssignees.length > 0);
     setSelectedColumn(columnTitle);
     setIsModalOpen(true);
   };
@@ -942,6 +956,35 @@ const DashboardPage = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const hasAssignees =
+      Array.isArray(newIdea.assignees) && newIdea.assignees.length > 0;
+    if (
+      !isModalOpen ||
+      hasAutoSelectedAssignee ||
+      !userDisplayName ||
+      hasAssignees
+    ) {
+      return;
+    }
+    setNewIdea((prev) => ({
+      ...prev,
+      assignees: [userDisplayName],
+    }));
+    setHasAutoSelectedAssignee(true);
+  }, [
+    isModalOpen,
+    hasAutoSelectedAssignee,
+    userDisplayName,
+    newIdea.assignees,
+  ]);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      setHasAutoSelectedAssignee(false);
+    }
+  }, [isModalOpen]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {

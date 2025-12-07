@@ -13,6 +13,27 @@ import { useAuth } from "@/context/AuthContext";
 
 import { emailRegex, nameRegex, userNameRegex } from "@/lib/constants";
 
+const extractUserProfile = (payload) => {
+  if (!payload || typeof payload !== "object") return null;
+  return (
+    payload.user ||
+    payload.profile ||
+    payload.user_details ||
+    payload.userInfo ||
+    payload.current_user ||
+    null
+  );
+};
+
+const buildFallbackProfile = (email) => {
+  if (!email) return null;
+  const nameFromEmail = email.includes("@") ? email.split("@")[0] : email;
+  return {
+    name: nameFromEmail,
+    email,
+  };
+};
+
 const initialState = {
   name: "",
   email: "",
@@ -203,7 +224,9 @@ const LoginPage = ({ type }) => {
           localStorage.setItem("userEmail", userData?.email);
         }
         
-        login(data.access_token);
+        const profileFromResponse = extractUserProfile(data);
+        const fallbackProfile = profileFromResponse || buildFallbackProfile(userData?.email);
+        await login(data.access_token, fallbackProfile);
         window.location.href = "/dashboard";
       } else {
         // Call signup API
