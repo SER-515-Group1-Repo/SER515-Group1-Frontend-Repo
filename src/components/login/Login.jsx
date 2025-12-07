@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { UserCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ const LoginPage = ({ type }) => {
 
   // Forgot Password Modal State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1 = email, 2 = new password
+  const [forgotPasswordStep, setForgotPasswordStep] = useState(1);
   const [forgotEmail, setForgotEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -113,6 +113,7 @@ const LoginPage = ({ type }) => {
       handleForgotPasswordClose();
     } catch (error) {
       setForgotPasswordError("Failed to reset password. Please try again.");
+      console.error("Error resetting password:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -197,13 +198,13 @@ const LoginPage = ({ type }) => {
           `${import.meta.env.VITE_BASE_URL}/login`,
           formData
         );
-        
+
         // Save email if Remember Me is checked
         if (rememberMe) {
           localStorage.setItem("userEmail", userData?.email);
         }
-        
-        login(data.access_token);
+
+        login(data.accessToken, data.user);
         window.location.href = "/dashboard";
       } else {
         // Call signup API
@@ -217,30 +218,50 @@ const LoginPage = ({ type }) => {
       }
     } catch (error) {
       console.error("Error during login/signup:", error);
-      
+
       // Handle specific error cases
       const errorDetail = error?.response?.data?.detail;
       const statusCode = error?.response?.status;
-      
+
       if (type === "login") {
         if (statusCode === 404) {
-          toastNotify("No account found with this email. Please sign up.", "error");
+          toastNotify(
+            "No account found with this email. Please sign up.",
+            "error"
+          );
         } else if (statusCode === 401) {
           toastNotify("Incorrect password. Please try again.", "error");
         } else if (errorDetail) {
-          toastNotify(typeof errorDetail === 'string' ? errorDetail : "Login failed. Please try again.", "error");
+          toastNotify(
+            typeof errorDetail === "string"
+              ? errorDetail
+              : "Login failed. Please try again.",
+            "error"
+          );
         } else {
           toastNotify("Login failed. Please check your credentials.", "error");
         }
       } else {
         // Signup errors
-        const errorMsg = typeof errorDetail === 'string' ? errorDetail.toLowerCase() : '';
+        const errorMsg =
+          typeof errorDetail === "string" ? errorDetail.toLowerCase() : "";
         if (statusCode === 400 && errorMsg.includes("email")) {
-          toastNotify("This email is already registered. Please log in instead.", "error");
+          toastNotify(
+            "This email is already registered. Please log in instead.",
+            "error"
+          );
         } else if (statusCode === 400 && errorMsg.includes("username")) {
-          toastNotify("This username is already taken. Please choose another.", "error");
+          toastNotify(
+            "This username is already taken. Please choose another.",
+            "error"
+          );
         } else if (errorDetail) {
-          toastNotify(typeof errorDetail === 'string' ? errorDetail : "Signup failed. Please try again.", "error");
+          toastNotify(
+            typeof errorDetail === "string"
+              ? errorDetail
+              : "Signup failed. Please try again.",
+            "error"
+          );
         } else {
           toastNotify("Signup failed. Please try again.", "error");
         }
@@ -436,7 +457,9 @@ const LoginPage = ({ type }) => {
               <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4 shadow-xl">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-semibold">
-                    {forgotPasswordStep === 1 ? "Forgot Password" : "Reset Password"}
+                    {forgotPasswordStep === 1
+                      ? "Forgot Password"
+                      : "Reset Password"}
                   </h2>
                   <button
                     onClick={handleForgotPasswordClose}
@@ -465,7 +488,9 @@ const LoginPage = ({ type }) => {
                       />
                     </div>
                     {forgotPasswordError && (
-                      <p className="text-red-500 text-sm">{forgotPasswordError}</p>
+                      <p className="text-red-500 text-sm">
+                        {forgotPasswordError}
+                      </p>
                     )}
                     <div className="flex gap-3">
                       <Button
@@ -505,7 +530,9 @@ const LoginPage = ({ type }) => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="confirm-new-password">Confirm New Password</Label>
+                      <Label htmlFor="confirm-new-password">
+                        Confirm New Password
+                      </Label>
                       <Input
                         id="confirm-new-password"
                         type="password"
@@ -518,7 +545,9 @@ const LoginPage = ({ type }) => {
                       />
                     </div>
                     {forgotPasswordError && (
-                      <p className="text-red-500 text-sm">{forgotPasswordError}</p>
+                      <p className="text-red-500 text-sm">
+                        {forgotPasswordError}
+                      </p>
                     )}
                     <div className="flex gap-3">
                       <Button
