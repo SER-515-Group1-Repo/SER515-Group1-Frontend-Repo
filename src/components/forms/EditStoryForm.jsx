@@ -1,10 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { X, Send, ChevronDown } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
-import { STATUS_OPTIONS, STORY_POINTS_OPTIONS } from "../../lib/constants";
+import { Checkbox } from "@/components/ui/checkbox";
+import { 
+  STATUS_OPTIONS, 
+  STORY_POINTS_OPTIONS,
+  getVisibleFields
+} from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const [formData, setFormData] = useState({
@@ -15,12 +20,28 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     storyPoints: "",
     assignees: [],
     tags: [],
+    // New fields for validation
+    bv: null,
+    refinementSessionScheduled: false,
+    groomed: false,
+    dependencies: [],
+    sessionDocumented: false,
+    refinementDependencies: [],
+    teamApproval: false,
+    poApproval: false,
+    sprintCapacity: null,
+    skillsAvailable: false,
+    teamCommits: false,
+    tasksIdentified: false,
   });
 
   const [activity, setActivity] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const assigneeRef = useRef(null);
+
+  // Get field visibility based on current status
+  const visibleFields = useMemo(() => getVisibleFields(formData.status), [formData.status]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -55,14 +76,29 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         }
       }
       
+      const currentStatus = story.status || "";
+      
       setFormData({
         title: story.title || "",
         description: story.description || "",
-        status: story.status || "",
+        status: currentStatus,
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
         storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
         assignees: parsedAssignees,
         tags: parsedTags,
+        // New validation fields - use camelCase from story or snake_case fallback
+        bv: story.bv ?? null,
+        refinementSessionScheduled: story.refinementSessionScheduled ?? story.refinement_session_scheduled ?? false,
+        groomed: story.groomed ?? false,
+        dependencies: story.dependencies ?? [],
+        sessionDocumented: story.sessionDocumented ?? story.session_documented ?? false,
+        refinementDependencies: story.refinementDependencies ?? story.refinement_dependencies ?? [],
+        teamApproval: story.teamApproval ?? story.team_approval ?? false,
+        poApproval: story.poApproval ?? story.po_approval ?? false,
+        sprintCapacity: story.sprintCapacity ?? story.sprint_capacity ?? null,
+        skillsAvailable: story.skillsAvailable ?? story.skills_available ?? false,
+        teamCommits: story.teamCommits ?? story.team_commits ?? false,
+        tasksIdentified: story.tasksIdentified ?? story.tasks_identified ?? false,
       });
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
@@ -73,19 +109,19 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             return {
               text: item.action,
               timestamp: item.timestamp || new Date().toLocaleString(),
-              isFromBackend: true,  // Mark as existing backend entry
+              isFromBackend: true,
             };
           }
           return { ...item, isFromBackend: true };
         });
         setActivity(formattedActivity);
       } else {
-        // Clear activity if no activity in story (different task opened)
         setActivity([]);
       }
     }
   }, [story]);
 
+  // Acceptance Criteria functions
   const updateCriteria = (index, value) => {
     const updated = [...formData.acceptanceCriteria];
     updated[index] = value;
@@ -106,6 +142,54 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const removeCriterion = (index) => {
     const updated = formData.acceptanceCriteria.filter((_, i) => i !== index);
     setFormData({ ...formData, acceptanceCriteria: updated });
+  };
+
+  // Dependencies functions
+  const addDependency = () => {
+    const currentDeps = formData.dependencies || [];
+    if (currentDeps.length >= 10) {
+      alert("Maximum 10 dependencies allowed");
+      return;
+    }
+    setFormData({
+      ...formData,
+      dependencies: [...currentDeps, ""],
+    });
+  };
+
+  const updateDependency = (index, value) => {
+    const updated = [...(formData.dependencies || [])];
+    updated[index] = value;
+    setFormData({ ...formData, dependencies: updated });
+  };
+
+  const removeDependency = (index) => {
+    const updated = (formData.dependencies || []).filter((_, i) => i !== index);
+    setFormData({ ...formData, dependencies: updated });
+  };
+
+  // Refinement Dependencies functions
+  const addRefinementDependency = () => {
+    const currentDeps = formData.refinementDependencies || [];
+    if (currentDeps.length >= 10) {
+      alert("Maximum 10 refinement dependencies allowed");
+      return;
+    }
+    setFormData({
+      ...formData,
+      refinementDependencies: [...currentDeps, ""],
+    });
+  };
+
+  const updateRefinementDependency = (index, value) => {
+    const updated = [...(formData.refinementDependencies || [])];
+    updated[index] = value;
+    setFormData({ ...formData, refinementDependencies: updated });
+  };
+
+  const removeRefinementDependency = (index) => {
+    const updated = (formData.refinementDependencies || []).filter((_, i) => i !== index);
+    setFormData({ ...formData, refinementDependencies: updated });
   };
 
   const handleAddComment = () => {
@@ -154,10 +238,24 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       ...story,
       ...formData,
       acceptanceCriteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      storyPoints: formData.storyPoints ? parseInt(formData.storyPoints) : null,
-      // Also send snake_case versions for backend compatibility
+      storyPoints: formData.storyPoints !== "" ? parseInt(formData.storyPoints) : null,
+      // Send snake_case versions for backend compatibility
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      story_points: formData.storyPoints ? parseInt(formData.storyPoints) : null,
+      story_points: formData.storyPoints !== "" ? parseInt(formData.storyPoints) : null,
+      // Validation fields - snake_case for backend
+      bv: formData.bv !== null && formData.bv !== "" ? parseInt(formData.bv) : null,
+      refinement_session_scheduled: formData.refinementSessionScheduled || false,
+      groomed: formData.groomed || false,
+      session_documented: formData.sessionDocumented || false,
+      dependencies: (formData.dependencies || []).filter((d) => d && d.trim()),
+      refinement_dependencies: (formData.refinementDependencies || []).filter((d) => d && d.trim()),
+      team_approval: formData.teamApproval || false,
+      po_approval: formData.poApproval || false,
+      sprint_capacity: formData.sprintCapacity !== null && formData.sprintCapacity !== "" 
+        ? parseInt(formData.sprintCapacity) : null,
+      skills_available: formData.skillsAvailable || false,
+      team_commits: formData.teamCommits || false,
+      tasks_identified: formData.tasksIdentified || false,
       // Send activity - include only NEW user-added comments
       activity: newComments,
     };
@@ -198,95 +296,349 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         />
       </div>
 
-      {/* Acceptance Criteria */}
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Acceptance Criteria</Label>
-        <div className="col-span-3 space-y-2">
-          {formData.acceptanceCriteria.map((criteria, index) => (
-            <div key={index} className="flex gap-2 items-center">
-              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
-              <Input
-                placeholder={`Enter criterion ${index + 1}...`}
-                value={criteria}
-                onChange={(e) => updateCriteria(index, e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeCriterion(index)}
-                className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addCriterion}
-              disabled={formData.acceptanceCriteria.length >= 5}
-            >
-              + Add Criterion
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              {formData.acceptanceCriteria.length}/5 criteria
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Story Points */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="edit-story-points" className="text-right">
-          Story Points
-        </Label>
-        <div className="col-span-3">
-          <select
-            id="edit-story-points"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormData({ 
-                ...formData, 
-                storyPoints: val === "" ? "" : parseInt(val) 
-              });
-            }}
-          >
-            <option value="">Select story points...</option>
-            {STORY_POINTS_OPTIONS.map((points) => (
-              <option key={points} value={points}>
-                {points}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
-        </div>
-      </div>
-
       {/* Status */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="edit-status" className="text-right">
           Status <span className="text-red-500">*</span>
         </Label>
-        <select
-          id="edit-status"
-          className="col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          value={formData.status}
-          onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-        >
-          <option value="">Select a status</option>
-          {STATUS_OPTIONS.map((status) => (
-            <option key={status} value={status}>
-              {status}
-            </option>
-          ))}
-        </select>
+        <div className="col-span-3">
+          <select
+            id="edit-status"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={formData.status}
+            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+          >
+            <option value="">Select a status</option>
+            {STATUS_OPTIONS.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {/* Business Value - visible from Proposed onwards */}
+      {visibleFields.bv && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="edit-bv" className="text-right">
+            Business Value
+          </Label>
+          <div className="col-span-3">
+            <Input
+              id="edit-bv"
+              type="number"
+              min="1"
+              max="100"
+              placeholder="Enter business value (1-100)"
+              value={formData.bv ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || val === null) {
+                  setFormData({ ...formData, bv: null });
+                } else {
+                  const num = parseInt(val);
+                  if (!isNaN(num) && num >= 1 && num <= 100) {
+                    setFormData({ ...formData, bv: num });
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Required to move from Backlog to Proposed
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Acceptance Criteria - visible from Proposed onwards */}
+      {visibleFields.acceptanceCriteria && (
+        <div className="grid grid-cols-4 items-start gap-4">
+          <Label className="text-right pt-2">Acceptance Criteria</Label>
+          <div className="col-span-3 space-y-2">
+            {formData.acceptanceCriteria.map((criteria, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+                <Input
+                  placeholder={`Enter criterion ${index + 1}...`}
+                  value={criteria}
+                  onChange={(e) => updateCriteria(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeCriterion(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addCriterion}
+                disabled={formData.acceptanceCriteria.length >= 5}
+              >
+                + Add Criterion
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {formData.acceptanceCriteria.length}/5 criteria
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Needs Refinement Fields */}
+      {visibleFields.refinementSessionScheduled && (
+        <div className="border rounded-lg p-4 space-y-3 bg-blue-50/50">
+          <h4 className="font-medium text-sm text-blue-800">Refinement Checklist</h4>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-refinementSessionScheduled"
+              checked={formData.refinementSessionScheduled || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, refinementSessionScheduled: checked })
+              }
+            />
+            <Label htmlFor="edit-refinementSessionScheduled" className="text-sm font-normal">
+              Refinement Session Scheduled
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-groomed"
+              checked={formData.groomed || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, groomed: checked })
+              }
+            />
+            <Label htmlFor="edit-groomed" className="text-sm font-normal">
+              Story is Groomed
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-sessionDocumented"
+              checked={formData.sessionDocumented || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, sessionDocumented: checked })
+              }
+            />
+            <Label htmlFor="edit-sessionDocumented" className="text-sm font-normal">
+              Session Documented
+            </Label>
+          </div>
+
+          {/* Dependencies */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-sm">Dependencies</Label>
+            {(formData.dependencies || []).map((dep, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Input
+                  placeholder={`Dependency ${index + 1}...`}
+                  value={dep}
+                  onChange={(e) => updateDependency(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeDependency(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addDependency}
+              disabled={(formData.dependencies || []).length >= 10}
+            >
+              + Add Dependency
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Story Points - visible from In Refinement onwards */}
+      {visibleFields.storyPoints && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="edit-story-points" className="text-right">
+            Story Points
+          </Label>
+          <div className="col-span-3">
+            <select
+              id="edit-story-points"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ 
+                  ...formData, 
+                  storyPoints: val === "" ? "" : parseInt(val) 
+                });
+              }}
+            >
+              <option value="">Select story points...</option>
+              {STORY_POINTS_OPTIONS.map((points) => (
+                <option key={points} value={points}>
+                  {points}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Fibonacci sequence values - Required for Ready To Commit
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* In Refinement Fields */}
+      {visibleFields.refinementDependencies && (
+        <div className="border rounded-lg p-4 space-y-3 bg-purple-50/50">
+          <h4 className="font-medium text-sm text-purple-800">In Refinement Requirements</h4>
+          
+          {/* Refinement Dependencies */}
+          <div className="space-y-2">
+            <Label className="text-sm">Refinement Dependencies</Label>
+            {(formData.refinementDependencies || []).map((dep, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Input
+                  placeholder={`Refinement dependency ${index + 1}...`}
+                  value={dep}
+                  onChange={(e) => updateRefinementDependency(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeRefinementDependency(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addRefinementDependency}
+              disabled={(formData.refinementDependencies || []).length >= 10}
+            >
+              + Add Refinement Dependency
+            </Button>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="edit-teamApproval"
+              checked={formData.teamApproval || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, teamApproval: checked })
+              }
+            />
+            <Label htmlFor="edit-teamApproval" className="text-sm font-normal">
+              Team Approval
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-poApproval"
+              checked={formData.poApproval || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, poApproval: checked })
+              }
+            />
+            <Label htmlFor="edit-poApproval" className="text-sm font-normal">
+              PO Approval
+            </Label>
+          </div>
+        </div>
+      )}
+
+      {/* Ready To Commit Fields */}
+      {visibleFields.sprintCapacity && (
+        <div className="border rounded-lg p-4 space-y-3 bg-green-50/50">
+          <h4 className="font-medium text-sm text-green-800">Sprint Planning</h4>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="edit-sprintCapacity" className="text-right text-sm">
+              Sprint Capacity
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="edit-sprintCapacity"
+                type="number"
+                min="1"
+                placeholder="Enter sprint capacity"
+                value={formData.sprintCapacity ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormData({
+                    ...formData,
+                    sprintCapacity: val === "" ? null : parseInt(val),
+                  });
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-skillsAvailable"
+              checked={formData.skillsAvailable || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, skillsAvailable: checked })
+              }
+            />
+            <Label htmlFor="edit-skillsAvailable" className="text-sm font-normal">
+              Skills Available in Team
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-teamCommits"
+              checked={formData.teamCommits || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, teamCommits: checked })
+              }
+            />
+            <Label htmlFor="edit-teamCommits" className="text-sm font-normal">
+              Team Commits to Deliver
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="edit-tasksIdentified"
+              checked={formData.tasksIdentified || false}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, tasksIdentified: checked })
+              }
+            />
+            <Label htmlFor="edit-tasksIdentified" className="text-sm font-normal">
+              Tasks Identified
+            </Label>
+          </div>
+        </div>
+      )}
 
       {/* Assignees (Multi-Select) */}
       <div className="grid grid-cols-4 items-start gap-4">

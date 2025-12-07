@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Label } from "@/components/ui/label";
-import { STATUS_OPTIONS } from "../../lib/constants";
+import { STATUS_OPTIONS, STORY_POINTS_OPTIONS, getVisibleFields } from "../../lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import TagsDropdown from "@/components/common/TagsDropdown";
 import { X, ChevronDown } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const NewIdeaForm = ({
   newIdea,
@@ -14,6 +15,10 @@ const NewIdeaForm = ({
 }) => {
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const assigneeRef = useRef(null);
+
+  // Get field visibility based on current status
+  const currentStatus = newIdea.status || selectedColumn || "Backlog";
+  const visibleFields = useMemo(() => getVisibleFields(currentStatus), [currentStatus]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -50,6 +55,54 @@ const NewIdeaForm = ({
       (_, i) => i !== index
     );
     setNewIdea({ ...newIdea, acceptanceCriteria: updated });
+  };
+
+  // Dependencies functions
+  const addDependency = () => {
+    const currentDeps = newIdea.dependencies || [];
+    if (currentDeps.length >= 10) {
+      alert("Maximum 10 dependencies allowed");
+      return;
+    }
+    setNewIdea({
+      ...newIdea,
+      dependencies: [...currentDeps, ""],
+    });
+  };
+
+  const updateDependency = (index, value) => {
+    const updated = [...(newIdea.dependencies || [])];
+    updated[index] = value;
+    setNewIdea({ ...newIdea, dependencies: updated });
+  };
+
+  const removeDependency = (index) => {
+    const updated = (newIdea.dependencies || []).filter((_, i) => i !== index);
+    setNewIdea({ ...newIdea, dependencies: updated });
+  };
+
+  // Refinement Dependencies functions
+  const addRefinementDependency = () => {
+    const currentDeps = newIdea.refinementDependencies || [];
+    if (currentDeps.length >= 10) {
+      alert("Maximum 10 refinement dependencies allowed");
+      return;
+    }
+    setNewIdea({
+      ...newIdea,
+      refinementDependencies: [...currentDeps, ""],
+    });
+  };
+
+  const updateRefinementDependency = (index, value) => {
+    const updated = [...(newIdea.refinementDependencies || [])];
+    updated[index] = value;
+    setNewIdea({ ...newIdea, refinementDependencies: updated });
+  };
+
+  const removeRefinementDependency = (index) => {
+    const updated = (newIdea.refinementDependencies || []).filter((_, i) => i !== index);
+    setNewIdea({ ...newIdea, refinementDependencies: updated });
   };
 
   // Multi-select assignees
@@ -104,81 +157,6 @@ const NewIdeaForm = ({
         />
       </div>
 
-      {/* Acceptance Criteria */}
-      <div className="grid grid-cols-4 items-start gap-4">
-        <Label className="text-right pt-2">Acceptance Criteria</Label>
-        <div className="col-span-3 space-y-2">
-          {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
-            <div key={index} className="flex gap-2 items-center">
-              <span className="text-sm text-muted-foreground w-6">
-                {index + 1}.
-              </span>
-              <Input
-                placeholder={`Enter criterion ${index + 1}...`}
-                value={criteria}
-                onChange={(e) => updateCriteria(index, e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => removeCriterion(index)}
-                className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <div className="flex items-center justify-between pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addCriterion}
-              disabled={(newIdea.acceptanceCriteria || []).length >= 5}
-            >
-              + Add Criterion
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              {(newIdea.acceptanceCriteria || []).length}/5 criteria
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Story Points */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="story-points" className="text-right">
-          Story Points
-        </Label>
-        <div className="col-span-3">
-          <Input
-            id="story-points"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            placeholder="e.g., 8 (0-100)"
-            value={newIdea.storyPoints ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || val === null) {
-                setNewIdea({ ...newIdea, storyPoints: null });
-              } else {
-                const num = parseInt(val);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                  setNewIdea({ ...newIdea, storyPoints: num });
-                }
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Valid range: 0-100
-          </p>
-        </div>
-      </div>
-
       {/* Status */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="status" className="text-right">
@@ -187,7 +165,7 @@ const NewIdeaForm = ({
         <select
           id="status"
           className="col-span-3 h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          value={newIdea.status || selectedColumn || "Proposed"}
+          value={currentStatus}
           onChange={(e) => setNewIdea({ ...newIdea, status: e.target.value })}
         >
           {STATUS_OPTIONS.map((status) => (
@@ -197,6 +175,329 @@ const NewIdeaForm = ({
           ))}
         </select>
       </div>
+
+      {/* Business Value - visible from Proposed onwards */}
+      {visibleFields.bv && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="bv" className="text-right">
+            Business Value
+          </Label>
+          <div className="col-span-3">
+            <Input
+              id="bv"
+              type="number"
+              min="1"
+              max="100"
+              placeholder="Enter business value (1-100)"
+              value={newIdea.bv ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || val === null) {
+                  setNewIdea({ ...newIdea, bv: null });
+                } else {
+                  const num = parseInt(val);
+                  if (!isNaN(num) && num >= 1 && num <= 100) {
+                    setNewIdea({ ...newIdea, bv: num });
+                  }
+                }
+              }}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Required to move from Backlog to Proposed
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Acceptance Criteria - visible from Proposed onwards */}
+      {visibleFields.acceptanceCriteria && (
+        <div className="grid grid-cols-4 items-start gap-4">
+          <Label className="text-right pt-2">Acceptance Criteria</Label>
+          <div className="col-span-3 space-y-2">
+            {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <span className="text-sm text-muted-foreground w-6">
+                  {index + 1}.
+                </span>
+                <Input
+                  placeholder={`Enter criterion ${index + 1}...`}
+                  value={criteria}
+                  onChange={(e) => updateCriteria(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeCriterion(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addCriterion}
+                disabled={(newIdea.acceptanceCriteria || []).length >= 5}
+              >
+                + Add Criterion
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {(newIdea.acceptanceCriteria || []).length}/5 criteria
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Needs Refinement Fields */}
+      {visibleFields.refinementSessionScheduled && (
+        <div className="border rounded-lg p-4 space-y-3 bg-blue-50/50">
+          <h4 className="font-medium text-sm text-blue-800">Refinement Checklist</h4>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="refinementSessionScheduled"
+              checked={newIdea.refinementSessionScheduled || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, refinementSessionScheduled: checked })
+              }
+            />
+            <Label htmlFor="refinementSessionScheduled" className="text-sm font-normal">
+              Refinement Session Scheduled
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="groomed"
+              checked={newIdea.groomed || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, groomed: checked })
+              }
+            />
+            <Label htmlFor="groomed" className="text-sm font-normal">
+              Story is Groomed
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sessionDocumented"
+              checked={newIdea.sessionDocumented || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, sessionDocumented: checked })
+              }
+            />
+            <Label htmlFor="sessionDocumented" className="text-sm font-normal">
+              Session Documented
+            </Label>
+          </div>
+
+          {/* Dependencies */}
+          <div className="space-y-2 pt-2">
+            <Label className="text-sm">Dependencies</Label>
+            {(newIdea.dependencies || []).map((dep, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Input
+                  placeholder={`Dependency ${index + 1}...`}
+                  value={dep}
+                  onChange={(e) => updateDependency(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeDependency(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addDependency}
+              disabled={(newIdea.dependencies || []).length >= 10}
+            >
+              + Add Dependency
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* In Refinement Fields */}
+      {visibleFields.storyPoints && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="story-points" className="text-right">
+            Story Points
+          </Label>
+          <div className="col-span-3">
+            <select
+              id="story-points"
+              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={newIdea.storyPoints ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                setNewIdea({
+                  ...newIdea,
+                  storyPoints: val === "" ? null : parseInt(val),
+                });
+              }}
+            >
+              <option value="">Select story points...</option>
+              {STORY_POINTS_OPTIONS.map((points) => (
+                <option key={points} value={points}>
+                  {points}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Fibonacci sequence values - Required for Ready To Commit
+            </p>
+          </div>
+        </div>
+      )}
+
+      {visibleFields.refinementDependencies && (
+        <div className="border rounded-lg p-4 space-y-3 bg-purple-50/50">
+          <h4 className="font-medium text-sm text-purple-800">In Refinement Requirements</h4>
+          
+          {/* Refinement Dependencies */}
+          <div className="space-y-2">
+            <Label className="text-sm">Refinement Dependencies</Label>
+            {(newIdea.refinementDependencies || []).map((dep, index) => (
+              <div key={index} className="flex gap-2 items-center">
+                <Input
+                  placeholder={`Refinement dependency ${index + 1}...`}
+                  value={dep}
+                  onChange={(e) => updateRefinementDependency(index, e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeRefinementDependency(index)}
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addRefinementDependency}
+              disabled={(newIdea.refinementDependencies || []).length >= 10}
+            >
+              + Add Refinement Dependency
+            </Button>
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="teamApproval"
+              checked={newIdea.teamApproval || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, teamApproval: checked })
+              }
+            />
+            <Label htmlFor="teamApproval" className="text-sm font-normal">
+              Team Approval
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="poApproval"
+              checked={newIdea.poApproval || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, poApproval: checked })
+              }
+            />
+            <Label htmlFor="poApproval" className="text-sm font-normal">
+              PO Approval
+            </Label>
+          </div>
+        </div>
+      )}
+
+      {/* Ready To Commit Fields */}
+      {visibleFields.sprintCapacity && (
+        <div className="border rounded-lg p-4 space-y-3 bg-green-50/50">
+          <h4 className="font-medium text-sm text-green-800">Sprint Planning</h4>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="sprintCapacity" className="text-right text-sm">
+              Sprint Capacity
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="sprintCapacity"
+                type="number"
+                min="1"
+                placeholder="Enter sprint capacity"
+                value={newIdea.sprintCapacity ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewIdea({
+                    ...newIdea,
+                    sprintCapacity: val === "" ? null : parseInt(val),
+                  });
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="skillsAvailable"
+              checked={newIdea.skillsAvailable || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, skillsAvailable: checked })
+              }
+            />
+            <Label htmlFor="skillsAvailable" className="text-sm font-normal">
+              Skills Available in Team
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="teamCommits"
+              checked={newIdea.teamCommits || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, teamCommits: checked })
+              }
+            />
+            <Label htmlFor="teamCommits" className="text-sm font-normal">
+              Team Commits to Deliver
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="tasksIdentified"
+              checked={newIdea.tasksIdentified || false}
+              onCheckedChange={(checked) =>
+                setNewIdea({ ...newIdea, tasksIdentified: checked })
+              }
+            />
+            <Label htmlFor="tasksIdentified" className="text-sm font-normal">
+              Tasks Identified
+            </Label>
+          </div>
+        </div>
+      )}
 
       {/* Assignees (Multi-Select) */}
       <div className="grid grid-cols-4 items-start gap-4">
