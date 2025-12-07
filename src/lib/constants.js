@@ -64,7 +64,7 @@ export const FIELD_VISIBILITY = {
   },
   "In Refinement": {
     acceptanceCriteria: true,
-    storyPoints: true,
+    storyPoints: false,
     bv: true,
     refinementSessionScheduled: true,
     groomed: true,
@@ -80,7 +80,7 @@ export const FIELD_VISIBILITY = {
   },
   "Ready To Commit": {
     acceptanceCriteria: true,
-    storyPoints: true,
+    storyPoints: false,
     bv: true,
     refinementSessionScheduled: true,
     groomed: true,
