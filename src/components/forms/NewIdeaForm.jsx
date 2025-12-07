@@ -17,6 +17,8 @@ const NewIdeaForm = ({
   teamMembers = [],
   selectedColumn,
 }) => {
+  // Validation state
+  const [errorState, setErrorState] = useState({});
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const assigneeRef = useRef(null);
 
@@ -131,6 +133,28 @@ const NewIdeaForm = ({
     setNewIdea({ ...newIdea, assignees: [] });
   };
 
+  // Real-time validation
+  useEffect(() => {
+    const errors = {};
+    if (!newIdea.title || newIdea.title.trim() === "") {
+      errors.title = "Title is required";
+    }
+    if (!newIdea.description || newIdea.description.trim() === "") {
+      errors.description = "Description is required";
+    }
+    if (visibleFields.bv && (newIdea.bv === null || newIdea.bv === undefined || newIdea.bv === "")) {
+      errors.bv = "Business value is required";
+    } else if (visibleFields.bv && (newIdea.bv < 1 || newIdea.bv > 100)) {
+      errors.bv = "Business value must be 1-100";
+    }
+    if (visibleFields.storyPoints && (newIdea.storyPoints === null || newIdea.storyPoints === undefined || newIdea.storyPoints === "")) {
+      errors.storyPoints = "Story points are required";
+    } else if (visibleFields.storyPoints && (newIdea.storyPoints < 0 || newIdea.storyPoints > 100)) {
+      errors.storyPoints = "Story points must be 0-100";
+    }
+    setErrorState(errors);
+  }, [newIdea, visibleFields]);
+
   return (
     <div className="space-y-4">
       {/* Title */}
@@ -141,11 +165,12 @@ const NewIdeaForm = ({
         <Input
           id="title"
           placeholder="e.g. Improve task filter UX"
-          className="col-span-3"
+          className={`col-span-3 ${errorState.title ? "border-red-500" : ""}`}
           value={newIdea.title || ""}
           onChange={(e) => setNewIdea({ ...newIdea, title: e.target.value })}
           required
         />
+        {errorState.title && <p className="text-red-500 text-sm col-span-4">{errorState.title}</p>}
       </div>
 
       {/* Description */}
@@ -157,13 +182,14 @@ const NewIdeaForm = ({
           id="description"
           rows={4}
           placeholder="Briefly describe the idea…"
-          className="col-span-3 min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical"
+          className={`col-span-3 min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical ${errorState.description ? "border-red-500" : ""}`}
           value={newIdea.description || ""}
           onChange={(e) =>
             setNewIdea({ ...newIdea, description: e.target.value })
           }
           required
         />
+        {errorState.description && <p className="text-red-500 text-sm col-span-4">{errorState.description}</p>}
       </div>
 
       {/* Acceptance Criteria */}
@@ -235,10 +261,12 @@ const NewIdeaForm = ({
                   }
                 }
               }}
+              className={errorState.storyPoints ? "border-red-500" : ""}
             />
             <p className="text-xs text-muted-foreground mt-1">
               Valid range: 0-100
             </p>
+            {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
           </div>
         </div>
       )}
@@ -316,10 +344,12 @@ const NewIdeaForm = ({
                   }
                 }
               }}
+              className={errorState.bv ? "border-red-500" : ""}
             />
             <p className="text-xs text-muted-foreground mt-1">
               Required to move from Backlog to Proposed
             </p>
+            {errorState.bv && <p className="text-red-500 text-sm">{errorState.bv}</p>}
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,39 @@ const LoginPage = ({ type }) => {
     localStorage.getItem("rememberMe") === "true" || false
   );
   const [errorState, setErrorState] = useState(initialState);
+
+  // Real-time validation as user types
+  useEffect(() => {
+    const errors = { ...initialState, rePassword: "" };
+    if (!userData?.email) {
+      errors.email = "Email is required";
+    } else if (!emailRegex.test(userData.email)) {
+      errors.email = "Enter a valid email address";
+    }
+    if (!userData?.password) {
+      errors.password = "Password is required";
+    } else if (userData.password.length < 8) {
+      errors.password = "Password must be at least 8 characters";
+    }
+    if (type === "sign-up") {
+      if (!userData?.name) {
+        errors.name = "Name is required";
+      } else if (!nameRegex.test(userData.name)) {
+        errors.name = "Name should contain only letters and spaces";
+      }
+      if (!userData?.userName) {
+        errors.userName = "User name is required";
+      } else if (!userNameRegex.test(userData.userName)) {
+        errors.userName = "User name must be alphanumeric (no spaces)";
+      }
+      if (!rePassword) {
+        errors.rePassword = "Please re-enter your password";
+      } else if (userData.password !== rePassword) {
+        errors.rePassword = "Passwords do not match";
+      }
+    }
+    setErrorState(errors);
+  }, [userData, rePassword, type]);
 
   // Forgot Password Modal State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -319,6 +352,7 @@ const LoginPage = ({ type }) => {
                   onChange={(e) =>
                     setUserData({ ...userData, name: e.target.value })
                   }
+                  className={errorState.name ? "border-red-500" : ""}
                 />
                 {errorState.name && (
                   <p className="text-red-500 text-sm">{errorState.name}</p>
@@ -335,6 +369,7 @@ const LoginPage = ({ type }) => {
                 onChange={(e) =>
                   setUserData({ ...userData, email: e.target.value })
                 }
+                className={errorState.email ? "border-red-500" : ""}
               />
               {errorState.email && (
                 <p className="text-red-500 text-sm">{errorState.email}</p>
@@ -352,6 +387,7 @@ const LoginPage = ({ type }) => {
                   onChange={(e) =>
                     setUserData({ ...userData, userName: e.target.value })
                   }
+                  className={errorState.userName ? "border-red-500" : ""}
                 />
                 {errorState.userName && (
                   <p className="text-red-500 text-sm">{errorState.userName}</p>
@@ -371,6 +407,7 @@ const LoginPage = ({ type }) => {
                 onChange={(e) =>
                   setUserData({ ...userData, password: e.target.value })
                 }
+                className={errorState.password ? "border-red-500" : ""}
               />
               {errorState.password && (
                 <p className="text-red-500 text-sm">{errorState.password}</p>
@@ -386,6 +423,7 @@ const LoginPage = ({ type }) => {
                   placeholder="Re-Enter Your Password"
                   value={rePassword}
                   onChange={(e) => setRePassword(e.target.value)}
+                  className={errorState.rePassword ? "border-red-500" : ""}
                 />
                 {errorState.rePassword && (
                   <p className="text-red-500 text-sm">

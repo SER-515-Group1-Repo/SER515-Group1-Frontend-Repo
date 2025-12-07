@@ -12,6 +12,29 @@ import {
 } from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
+  // Validation state
+  const [errorState, setErrorState] = useState({});
+    // Real-time validation
+    useEffect(() => {
+      const errors = {};
+      if (!formData.title || formData.title.trim() === "") {
+        errors.title = "Title is required";
+      }
+      if (!formData.description || formData.description.trim() === "") {
+        errors.description = "Description is required";
+      }
+      if (visibleFields.bv && (formData.bv === null || formData.bv === undefined || formData.bv === "")) {
+        errors.bv = "Business value is required";
+      } else if (visibleFields.bv && (formData.bv < 1 || formData.bv > 100)) {
+        errors.bv = "Business value must be 1-100";
+      }
+      if (visibleFields.storyPoints && (formData.storyPoints === null || formData.storyPoints === undefined || formData.storyPoints === "")) {
+        errors.storyPoints = "Story points are required";
+      } else if (visibleFields.storyPoints && (formData.storyPoints < 0 || formData.storyPoints > 100)) {
+        errors.storyPoints = "Story points must be 0-100";
+      }
+      setErrorState(errors);
+    }, [formData, visibleFields]);
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -341,11 +364,12 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         <Input
           id="edit-title"
           placeholder="Enter the title"
-          className="col-span-3"
+          className={`col-span-3 ${errorState.title ? "border-red-500" : ""}`}
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
         />
+        {errorState.title && <p className="text-red-500 text-sm col-span-4">{errorState.title}</p>}
       </div>
 
       {/* Description */}
@@ -356,13 +380,14 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         <textarea
           id="edit-description"
           placeholder="Describe the story"
-          className="col-span-3 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical min-h-24"
+          className={`col-span-3 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical min-h-24 ${errorState.description ? "border-red-500" : ""}`}
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
           required
         />
+        {errorState.description && <p className="text-red-500 text-sm col-span-4">{errorState.description}</p>}
       </div>
 
       {/* Acceptance Criteria */}
@@ -409,39 +434,76 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       </div>
 
       {/* Story Points */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="edit-story-points" className="text-right">
-          Story Points
-        </Label>
-        <div className="col-span-3">
-          <select
-            id="edit-story-points"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={
-              formData.storyPoints === null || formData.storyPoints === ""
-                ? ""
-                : formData.storyPoints
-            }
-            onChange={(e) => {
-              const val = e.target.value;
-              setFormData({
-                ...formData,
-                storyPoints: val === "" ? "" : parseInt(val),
-              });
-            }}
-          >
-            <option value="">Select story points...</option>
-            {STORY_POINTS_OPTIONS.map((points) => (
-              <option key={points} value={points}>
-                {points}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-muted-foreground mt-1">
-            Fibonacci sequence values
-          </p>
+      {visibleFields.storyPoints && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="edit-story-points" className="text-right">
+            Story Points
+          </Label>
+          <div className="col-span-3">
+            <select
+              id="edit-story-points"
+              className={`h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ${errorState.storyPoints ? "border-red-500" : ""}`}
+              value={
+                formData.storyPoints === null || formData.storyPoints === ""
+                  ? ""
+                  : formData.storyPoints
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({
+                  ...formData,
+                  storyPoints: val === "" ? "" : parseInt(val),
+                });
+              }}
+            >
+              <option value="">Select story points...</option>
+              {STORY_POINTS_OPTIONS.map((points) => (
+                <option key={points} value={points}>
+                  {points}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Fibonacci sequence values
+            </p>
+            {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
+          </div>
         </div>
-      </div>
+      )}
+      {/* Business Value */}
+      {visibleFields.bv && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="edit-bv" className="text-right">
+            Business Value
+          </Label>
+          <div className="col-span-3">
+            <Input
+              id="edit-bv"
+              type="number"
+              min="1"
+              max="100"
+              placeholder="Enter business value (1-100)"
+              value={formData.bv ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || val === null) {
+                  setFormData({ ...formData, bv: null });
+                } else {
+                  const num = parseInt(val);
+                  if (!isNaN(num) && num >= 1 && num <= 100) {
+                    setFormData({ ...formData, bv: num });
+                  }
+                }
+              }}
+              className={errorState.bv ? "border-red-500" : ""}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Required to move from Backlog to Proposed
+            </p>
+            {errorState.bv && <p className="text-red-500 text-sm">{errorState.bv}</p>}
+          </div>
+        </div>
+      )}
 
       {/* MoSCoW Priority */}
       <div className="grid grid-cols-4 items-center gap-4">
