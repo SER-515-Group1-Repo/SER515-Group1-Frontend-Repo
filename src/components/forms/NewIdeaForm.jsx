@@ -179,6 +179,68 @@ const NewIdeaForm = ({
         </div>
       </div>
 
+      {/* Business Value */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="business-value" className="text-right">
+          Business Value
+        </Label>
+        <div className="col-span-3">
+          <Input
+            id="business-value"
+            type="number"
+            min="0"
+            max="10"
+            step="1"
+            placeholder="e.g., 8 (0-10) or leave empty"
+            value={newIdea.businessValue ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || val === null) {
+                setNewIdea({ ...newIdea, businessValue: null });
+              } else {
+                const num = parseInt(val);
+                if (!isNaN(num) && num >= 0 && num <= 10) {
+                  // Allow 0 as a valid value (means no business value)
+                  setNewIdea({ ...newIdea, businessValue: num });
+                }
+              }
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Product Owner assigns value (1-10). MVP Score = BV / SP
+          </p>
+        </div>
+      </div>
+
+      {/* MoSCoW Priority */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="moscow-priority" className="text-right">
+          MoSCoW Priority
+        </Label>
+        <div className="col-span-3">
+          <select
+            id="moscow-priority"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={newIdea.moscowPriority || ""}
+            onChange={(e) =>
+              setNewIdea({
+                ...newIdea,
+                moscowPriority: e.target.value || null,
+              })
+            }
+          >
+            <option value="">Select priority (optional)</option>
+            <option value="Must">Must</option>
+            <option value="Should">Should</option>
+            <option value="Could">Could</option>
+            <option value="Won't">Won't</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Override MVP score sorting with MoSCoW priority
+          </p>
+        </div>
+      </div>
+
       {/* Status */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="status" className="text-right">

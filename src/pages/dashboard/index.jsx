@@ -61,6 +61,35 @@ const dummyTeamMembers = [
 
 const FILTER_LS_KEY = "board_filters_v1";
 
+// Helper function to sort tasks by MVP score (reusable)
+const sortTasksByMVP = (tasks) => {
+  const moscowOrder = { "Must": 4, "Should": 3, "Could": 2, "Won't": 1 };
+  return [...tasks].sort((a, b) => {
+    // Calculate MVP scores dynamically from current values
+    // Treat 0, null, or undefined as invalid values
+    const aBV = a.businessValue ?? a.business_value ?? null;
+    const aSP = a.storyPoints ?? a.story_points ?? null;
+    const aHasValidValues = aBV !== null && aBV !== undefined && aBV !== 0 &&
+                           aSP !== null && aSP !== undefined && aSP !== 0;
+    const aScore = (aHasValidValues && aSP > 0) ? aBV / aSP : 0;
+    
+    const bBV = b.businessValue ?? b.business_value ?? null;
+    const bSP = b.storyPoints ?? b.story_points ?? null;
+    const bHasValidValues = bBV !== null && bBV !== undefined && bBV !== 0 &&
+                           bSP !== null && bSP !== undefined && bSP !== 0;
+    const bScore = (bHasValidValues && bSP > 0) ? bBV / bSP : 0;
+    
+    const aMoscow = moscowOrder[a.moscowPriority || a.moscow_priority] || 0;
+    const bMoscow = moscowOrder[b.moscowPriority || b.moscow_priority] || 0;
+    
+    // Sort by MVP score first (descending), then by MoSCoW priority (descending)
+    if (bScore !== aScore) {
+      return bScore - aScore;
+    }
+    return bMoscow - aMoscow;
+  });
+};
+
 const filtersToPlain = (f) =>
   !f
     ? null
@@ -176,6 +205,8 @@ const DashboardPage = () => {
       tags: [],
       acceptanceCriteria: [],
       storyPoints: null,
+      businessValue: null,
+      moscowPriority: null,
     });
     setSelectedColumn(columnTitle);
     setIsModalOpen(true);
@@ -225,9 +256,14 @@ const DashboardPage = () => {
         status: newIdea.status || selectedColumn || "Proposed",
         acceptance_criteria: filteredCriteria,
         story_points:
-          newIdea.storyPoints !== null && newIdea.storyPoints !== ""
+          (newIdea.storyPoints !== null && newIdea.storyPoints !== undefined && newIdea.storyPoints !== "" && newIdea.storyPoints !== 0)
             ? parseInt(newIdea.storyPoints)
             : null,
+        business_value:
+          (newIdea.businessValue !== null && newIdea.businessValue !== undefined && newIdea.businessValue !== "" && newIdea.businessValue !== 0)
+            ? parseInt(newIdea.businessValue)
+            : null,
+        moscow_priority: newIdea.moscowPriority || null,
       };
 
       const { data } = await apiClient.post(
@@ -236,6 +272,14 @@ const DashboardPage = () => {
       );
 
       // Normalize the response for frontend state
+      const businessValue = data?.story?.businessValue ?? data?.story?.business_value ?? null;
+      const storyPoints = data?.story?.storyPoints ?? data?.story?.story_points ?? null;
+      const hasValidValues = businessValue !== null && businessValue !== undefined && businessValue !== 0 &&
+                             storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
+      const mvpScore = (hasValidValues && storyPoints > 0) 
+        ? businessValue / storyPoints 
+        : 0;
+      
       const userTask = {
         ...data?.story,
         id: data?.story?.id
@@ -245,15 +289,19 @@ const DashboardPage = () => {
           data?.story?.acceptanceCriteria ||
           data?.story?.acceptance_criteria ||
           [],
-        storyPoints:
-          data?.story?.storyPoints ?? data?.story?.story_points ?? null,
+        storyPoints: storyPoints,
+        businessValue: businessValue,
+        moscowPriority: data?.story?.moscowPriority ?? data?.story?.moscow_priority ?? null,
+        mvpScore: mvpScore,
       };
 
-      const updatedColumns = originalColumnData.map((col) =>
-        col.title === (newIdea.status || selectedColumn)
-          ? { ...col, tasks: [...col.tasks, userTask] }
-          : col
-      );
+      const updatedColumns = originalColumnData.map((col) => {
+        if (col.title === (newIdea.status || selectedColumn)) {
+          const tasksWithNew = [...col.tasks, userTask];
+          return { ...col, tasks: sortTasksByMVP(tasksWithNew) };
+        }
+        return col;
+      });
       setOriginalColumnData(updatedColumns);
       setColumnData(updatedColumns);
 
@@ -268,6 +316,8 @@ const DashboardPage = () => {
         tags: [],
         acceptanceCriteria: [],
         storyPoints: null,
+        businessValue: null,
+        moscowPriority: null,
       });
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
@@ -446,22 +496,19 @@ const DashboardPage = () => {
       // Store original state for rollback on error
       const originalColumnData = JSON.parse(JSON.stringify(columnData));
 
-      // Prepare payload with proper field names for backend
+      // Prepare payload - send only snake_case (backend standard) to avoid duplicates
+      // Don't spread task to avoid duplicate fields
       const updatePayload = {
-        ...task,
+        title: task.title,
+        description: task.description,
         status: newStatus,
-        // Ensure snake_case fields are included
-        acceptance_criteria:
-          task.acceptance_criteria || task.acceptanceCriteria || [],
-        story_points:
-          task.story_points !== undefined
-            ? task.story_points
-            : task.storyPoints,
-        // Also include camelCase for compatibility
-        acceptanceCriteria:
-          task.acceptanceCriteria || task.acceptance_criteria || [],
-        storyPoints:
-          task.storyPoints !== undefined ? task.storyPoints : task.story_points,
+        assignees: task.assignees || [],
+        tags: task.tags || [],
+        acceptance_criteria: task.acceptance_criteria || task.acceptanceCriteria || [],
+        story_points: task.story_points !== undefined ? task.story_points : task.storyPoints,
+        business_value: task.business_value !== undefined ? task.business_value : task.businessValue,
+        moscow_priority: task.moscow_priority !== undefined ? task.moscow_priority : task.moscowPriority,
+        activity: task.activity || [],
       };
 
       const response = await apiClient.put(
@@ -477,6 +524,26 @@ const DashboardPage = () => {
       // Use the response data from backend which includes activity and status
       let updatedTask = response.data.story;
 
+      // Normalize business value and story points from backend response
+      const businessValue = (updatedTask.business_value !== undefined && updatedTask.business_value !== null)
+        ? updatedTask.business_value
+        : (updatedTask.businessValue !== undefined && updatedTask.businessValue !== null)
+          ? updatedTask.businessValue
+          : null;
+      
+      const storyPoints = (updatedTask.story_points !== undefined && updatedTask.story_points !== null)
+        ? updatedTask.story_points
+        : (updatedTask.storyPoints !== undefined && updatedTask.storyPoints !== null)
+          ? updatedTask.storyPoints
+          : null;
+      
+      // Calculate MVP score - treat 0 as invalid (same as null)
+      const hasValidValues = businessValue !== null && businessValue !== undefined && businessValue !== 0 &&
+                             storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
+      const mvpScore = (hasValidValues && storyPoints > 0) 
+        ? businessValue / storyPoints 
+        : 0;
+
       // Ensure camelCase fields for frontend state with proper defaults
       updatedTask = {
         ...updatedTask,
@@ -485,14 +552,12 @@ const DashboardPage = () => {
           : Array.isArray(updatedTask.acceptanceCriteria)
           ? updatedTask.acceptanceCriteria
           : [],
-        storyPoints:
-          updatedTask.story_points !== undefined &&
-          updatedTask.story_points !== null
-            ? updatedTask.story_points
-            : updatedTask.storyPoints !== undefined &&
-              updatedTask.storyPoints !== null
-            ? updatedTask.storyPoints
-            : null,
+        storyPoints: storyPoints, // Preserve the actual value from backend
+        businessValue: businessValue, // Preserve the actual value from backend
+        moscowPriority: (updatedTask.moscow_priority === null || updatedTask.moscow_priority === undefined || updatedTask.moscow_priority === "") 
+          ? null 
+          : (updatedTask.moscow_priority ?? updatedTask.moscowPriority ?? null),
+        mvpScore: mvpScore,
       };
 
       // Verify status actually changed
@@ -534,6 +599,8 @@ const DashboardPage = () => {
         );
         if (targetColumn) {
           targetColumn.tasks.push(updatedTask);
+          // Re-sort the target column by MVP score
+          targetColumn.tasks = sortTasksByMVP(targetColumn.tasks);
         } else {
           console.error(
             "Target column not found for status:",
@@ -544,7 +611,36 @@ const DashboardPage = () => {
           return originalColumnData;
         }
 
-        return newBoard;
+        // Re-sort all columns
+        return newBoard.map((col) => ({
+          ...col,
+          tasks: sortTasksByMVP(col.tasks),
+        }));
+      });
+
+      // Also update originalColumnData to keep it in sync
+      setOriginalColumnData((prevColumns) => {
+        if (!Array.isArray(prevColumns)) {
+          return prevColumns;
+        }
+
+        const newBoard = prevColumns.map((col) => ({
+          ...col,
+          tasks: col.tasks.filter((t) => t.id !== task.id),
+        }));
+
+        const targetColumn = newBoard.find(
+          (col) => col.title === updatedTask.status
+        );
+        if (targetColumn) {
+          targetColumn.tasks.push(updatedTask);
+          targetColumn.tasks = sortTasksByMVP(targetColumn.tasks);
+        }
+
+        return newBoard.map((col) => ({
+          ...col,
+          tasks: sortTasksByMVP(col.tasks),
+        }));
       });
 
       toastNotify("Task moved successfully!", "success");
@@ -618,26 +714,34 @@ const DashboardPage = () => {
       setOperationInProgress("save");
 
       // Prepare payload with proper field names for backend
+      // Explicitly handle null values - don't use || operator which treats null as falsy
+      const storyPointsValue = updatedTask.story_points !== undefined 
+        ? updatedTask.story_points 
+        : (updatedTask.storyPoints !== undefined ? updatedTask.storyPoints : null);
+      
+      const businessValueValue = updatedTask.business_value !== undefined 
+        ? updatedTask.business_value 
+        : (updatedTask.businessValue !== undefined ? updatedTask.businessValue : null);
+      
+      // Extract moscowPriority - check both camelCase and snake_case, handle empty string
+      const moscowPriorityValue = (updatedTask.moscow_priority !== undefined && updatedTask.moscow_priority !== null && updatedTask.moscow_priority !== "")
+        ? updatedTask.moscow_priority
+        : (updatedTask.moscowPriority !== undefined && updatedTask.moscowPriority !== null && updatedTask.moscowPriority !== "")
+          ? updatedTask.moscowPriority
+          : null;
+      
+      // Build update payload - send only snake_case (backend standard) to avoid duplicates
       const updatePayload = {
-        ...updatedTask,
-        // Ensure snake_case fields are included
-        acceptance_criteria:
-          updatedTask.acceptance_criteria ||
-          updatedTask.acceptanceCriteria ||
-          [],
-        story_points:
-          updatedTask.story_points !== undefined
-            ? updatedTask.story_points
-            : updatedTask.storyPoints,
-        // Also include camelCase for compatibility
-        acceptanceCriteria:
-          updatedTask.acceptanceCriteria ||
-          updatedTask.acceptance_criteria ||
-          [],
-        storyPoints:
-          updatedTask.storyPoints !== undefined
-            ? updatedTask.storyPoints
-            : updatedTask.story_points,
+        title: updatedTask.title,
+        description: updatedTask.description,
+        status: updatedTask.status,
+        assignees: updatedTask.assignees || [],
+        tags: updatedTask.tags || [],
+        acceptance_criteria: updatedTask.acceptance_criteria || updatedTask.acceptanceCriteria || [],
+        story_points: storyPointsValue,
+        business_value: businessValueValue,
+        moscow_priority: moscowPriorityValue, // Explicitly set - null if cleared, value if set
+        activity: updatedTask.activity || [],
       };
 
       const response = await apiClient.put(
@@ -666,6 +770,27 @@ const DashboardPage = () => {
         );
       }
 
+      // Normalize business value and story points from backend response
+      // Check both snake_case and camelCase, preserve actual values (including 0 if needed, though we treat 0 as null)
+      const businessValue = (savedTask.business_value !== undefined && savedTask.business_value !== null)
+        ? savedTask.business_value
+        : (savedTask.businessValue !== undefined && savedTask.businessValue !== null)
+          ? savedTask.businessValue
+          : null;
+      
+      const storyPoints = (savedTask.story_points !== undefined && savedTask.story_points !== null)
+        ? savedTask.story_points
+        : (savedTask.storyPoints !== undefined && savedTask.storyPoints !== null)
+          ? savedTask.storyPoints
+          : null;
+      
+      // Calculate MVP score - treat 0 as invalid (same as null)
+      const hasValidValues = businessValue !== null && businessValue !== undefined && businessValue !== 0 &&
+                             storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
+      const mvpScore = (hasValidValues && storyPoints > 0) 
+        ? businessValue / storyPoints 
+        : 0;
+
       // Ensure camelCase fields for frontend state with proper defaults
       savedTask = {
         ...savedTask,
@@ -674,14 +799,14 @@ const DashboardPage = () => {
           : Array.isArray(savedTask.acceptanceCriteria)
           ? savedTask.acceptanceCriteria
           : [],
-        storyPoints:
-          savedTask.story_points !== undefined &&
-          savedTask.story_points !== null
-            ? savedTask.story_points
-            : savedTask.storyPoints !== undefined &&
-              savedTask.storyPoints !== null
-            ? savedTask.storyPoints
-            : null,
+        storyPoints: storyPoints, // Preserve the actual value from backend
+        businessValue: businessValue, // Preserve the actual value from backend
+        moscowPriority: (savedTask.moscow_priority !== undefined && savedTask.moscow_priority !== null && savedTask.moscow_priority !== "")
+          ? savedTask.moscow_priority
+          : ((savedTask.moscowPriority !== undefined && savedTask.moscowPriority !== null && savedTask.moscowPriority !== "")
+              ? savedTask.moscowPriority
+              : null),
+        mvpScore: mvpScore,
       };
 
       // Check if status changed - use updatedTask (the request data) not stale selectedTask
@@ -707,6 +832,8 @@ const DashboardPage = () => {
           );
           if (targetColumn) {
             targetColumn.tasks.push(savedTask);
+            // Re-sort the target column by MVP score
+            targetColumn.tasks = sortTasksByMVP(targetColumn.tasks);
           } else {
             console.warn(
               "Target column not found for status:",
@@ -716,15 +843,59 @@ const DashboardPage = () => {
             return prevColumns;
           }
 
-          return newBoard;
-        } else {
-          // Status same - just update in place
-          return prevColumns.map((col) => ({
+          // Re-sort all columns
+          return newBoard.map((col) => ({
             ...col,
-            tasks: col.tasks.map((task) =>
-              task.id === savedTask.id ? savedTask : task
-            ),
+            tasks: sortTasksByMVP(col.tasks),
           }));
+        } else {
+          // Status same - just update in place and re-sort
+          return prevColumns.map((col) => {
+            const updatedTasks = col.tasks.map((task) =>
+              task.id === savedTask.id ? savedTask : task
+            );
+            return {
+              ...col,
+              tasks: sortTasksByMVP(updatedTasks),
+            };
+          });
+        }
+      });
+
+      // Also update originalColumnData to keep it in sync
+      setOriginalColumnData((prevColumns) => {
+        if (!Array.isArray(prevColumns)) {
+          return prevColumns;
+        }
+
+        if (statusChanged) {
+          const newBoard = prevColumns.map((col) => ({
+            ...col,
+            tasks: col.tasks.filter((t) => t.id !== savedTask.id),
+          }));
+
+          const targetColumn = newBoard.find(
+            (col) => col.title === savedTask.status
+          );
+          if (targetColumn) {
+            targetColumn.tasks.push(savedTask);
+            targetColumn.tasks = sortTasksByMVP(targetColumn.tasks);
+          }
+
+          return newBoard.map((col) => ({
+            ...col,
+            tasks: sortTasksByMVP(col.tasks),
+          }));
+        } else {
+          return prevColumns.map((col) => {
+            const updatedTasks = col.tasks.map((task) =>
+              task.id === savedTask.id ? savedTask : task
+            );
+            return {
+              ...col,
+              tasks: sortTasksByMVP(updatedTasks),
+            };
+          });
         }
       });
 
@@ -805,7 +976,6 @@ const DashboardPage = () => {
         }
 
         const newBoard = JSON.parse(JSON.stringify(initialColumns));
-
         data.forEach((idea) => {
           // Validate task object
           if (!idea || !idea.status) {
@@ -813,12 +983,41 @@ const DashboardPage = () => {
             return;
           }
 
+          // Calculate MVP score: Business Value / Story Points - treat 0 as invalid
+          const businessValue = idea.businessValue ?? idea.business_value ?? null;
+          const storyPoints = idea.storyPoints ?? idea.story_points ?? null;
+          const hasValidValues = businessValue !== null && businessValue !== undefined && businessValue !== 0 &&
+                                 storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
+          if (hasValidValues && storyPoints > 0) {
+            idea.mvpScore = businessValue / storyPoints;
+          } else {
+            idea.mvpScore = 0;
+          }
+          
+          // Normalize businessValue and storyPoints for consistent access
+          idea.businessValue = businessValue;
+          idea.business_value = businessValue;
+          idea.storyPoints = storyPoints;
+          idea.story_points = storyPoints;
+
+          // Normalize moscowPriority - ensure null/empty string is treated as null
+          const moscowPriorityValue = idea.moscowPriority ?? idea.moscow_priority ?? null;
+          idea.moscowPriority = (moscowPriorityValue === null || moscowPriorityValue === undefined || moscowPriorityValue === "") 
+            ? null 
+            : moscowPriorityValue;
+          idea.moscow_priority = idea.moscowPriority;
+
           const column = newBoard.find((col) => col.title === idea.status);
           if (column) {
             column.tasks.push(idea);
           } else {
             console.warn("Column not found for status:", idea.status);
           }
+        });
+
+        // Sort tasks within each column by MVP score using the reusable function
+        newBoard.forEach((col) => {
+          col.tasks = sortTasksByMVP(col.tasks);
         });
 
         // Check again if still latest request before state update

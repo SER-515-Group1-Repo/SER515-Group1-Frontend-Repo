@@ -13,6 +13,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     status: "",
     acceptanceCriteria: [],
     storyPoints: "",
+    businessValue: "",
+    moscowPriority: "",
     assignees: [],
     tags: [],
   });
@@ -34,7 +36,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   }, []);
 
   useEffect(() => {
-    if (story) {
+    // Only initialize form when story ID changes (new story selected), not on every story prop update
+    if (story && story.id) {
       // Parse tags - could be string, array, or empty
       let parsedTags = [];
       if (story.tags) {
@@ -55,12 +58,26 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         }
       }
       
+      // Handle moscowPriority - check for null/undefined/empty string explicitly
+      const moscowPriorityValue = story.moscowPriority ?? story.moscow_priority ?? null;
+      const moscowPriority = (moscowPriorityValue === null || moscowPriorityValue === undefined || moscowPriorityValue === "") ? "" : moscowPriorityValue;
+      
+      // Handle story points - convert null/undefined/0 to empty string for form display
+      const storyPointsValue = story.storyPoints ?? story.story_points ?? null;
+      const storyPointsFormValue = (storyPointsValue === null || storyPointsValue === undefined || storyPointsValue === 0) ? "" : storyPointsValue;
+      
+      // Handle business value - convert null/undefined/0 to empty string for form display
+      const businessValueValue = story.businessValue ?? story.business_value ?? null;
+      const businessValueFormValue = (businessValueValue === null || businessValueValue === undefined || businessValueValue === 0) ? "" : businessValueValue;
+      
       setFormData({
         title: story.title || "",
         description: story.description || "",
         status: story.status || "",
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
-        storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
+        storyPoints: storyPointsFormValue,
+        businessValue: businessValueFormValue,
+        moscowPriority: moscowPriority,
         assignees: parsedAssignees,
         tags: parsedTags,
       });
@@ -84,7 +101,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         setActivity([]);
       }
     }
-  }, [story]);
+  }, [story?.id]); // Only re-initialize when story ID changes, not when story properties update
 
   const updateCriteria = (index, value) => {
     const updated = [...formData.acceptanceCriteria];
@@ -150,15 +167,38 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     // Get only NEW user-added comments (items without isFromBackend flag)
     const newComments = finalActivity.filter((item) => item.text && !item.isFromBackend);
     
+    // Handle moscowPriority - convert empty string to null, preserve actual values
+    const moscowPriorityValue = (formData.moscowPriority !== null && 
+                                 formData.moscowPriority !== undefined && 
+                                 formData.moscowPriority !== "" && 
+                                 formData.moscowPriority.trim() !== "") 
+      ? formData.moscowPriority.trim() 
+      : null;
+    
+    // Handle story points and business value - convert empty string, 0, or null to null
+    // Empty string means user cleared the field
+    const storyPointsValue = (formData.storyPoints === null || formData.storyPoints === undefined || formData.storyPoints === "" || formData.storyPoints === 0)
+      ? null
+      : (typeof formData.storyPoints === 'string' ? parseInt(formData.storyPoints) : formData.storyPoints);
+    
+    const businessValueValue = (formData.businessValue === null || formData.businessValue === undefined || formData.businessValue === "" || formData.businessValue === 0)
+      ? null
+      : (typeof formData.businessValue === 'string' ? parseInt(formData.businessValue) : formData.businessValue);
+    
+    // Build submit data - send only snake_case (backend standard) to avoid duplicates
+    // Don't spread story/formData to avoid duplicate fields
+    // Include id from story so handleSaveEdit can use it
     const submitData = {
-      ...story,
-      ...formData,
-      acceptanceCriteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      storyPoints: formData.storyPoints ? parseInt(formData.storyPoints) : null,
-      // Also send snake_case versions for backend compatibility
+      id: story.id, // Include id so backend knows which story to update
+      title: formData.title,
+      description: formData.description,
+      status: formData.status,
+      assignees: formData.assignees || [],
+      tags: formData.tags || [],
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      story_points: formData.storyPoints ? parseInt(formData.storyPoints) : null,
-      // Send activity - include only NEW user-added comments
+      story_points: storyPointsValue,
+      business_value: businessValueValue,
+      moscow_priority: moscowPriorityValue,
       activity: newComments,
     };
     onSave(submitData);
@@ -265,6 +305,69 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             ))}
           </select>
           <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
+        </div>
+      </div>
+
+      {/* Business Value */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="edit-business-value" className="text-right">
+          Business Value
+        </Label>
+        <div className="col-span-3">
+          <Input
+            id="edit-business-value"
+            type="number"
+            min="0"
+            max="10"
+            step="1"
+            placeholder="e.g., 8 (0-10) or leave empty"
+            value={formData.businessValue === null || formData.businessValue === undefined || formData.businessValue === "" ? "" : String(formData.businessValue)}
+            onChange={(e) => {
+              const val = e.target.value;
+              // When user clears the field, set to empty string (will be converted to null on submit)
+              if (val === "" || val === null) {
+                setFormData({ ...formData, businessValue: "" });
+              } else {
+                const num = parseInt(val);
+                if (!isNaN(num) && num >= 0 && num <= 10) {
+                  setFormData({ ...formData, businessValue: num });
+                }
+              }
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Product Owner assigns value (1-10). MVP Score = BV / SP
+          </p>
+        </div>
+      </div>
+
+      {/* MoSCoW Priority */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="edit-moscow-priority" className="text-right">
+          MoSCoW Priority
+        </Label>
+        <div className="col-span-3">
+          <select
+            id="edit-moscow-priority"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={formData.moscowPriority === null || formData.moscowPriority === undefined ? "" : formData.moscowPriority}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormData({
+                ...formData,
+                moscowPriority: val === "" ? "" : val,
+              });
+            }}
+          >
+            <option value="">Select priority (optional)</option>
+            <option value="Must">Must</option>
+            <option value="Should">Should</option>
+            <option value="Could">Could</option>
+            <option value="Won't">Won't</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Override MVP score sorting with MoSCoW priority
+          </p>
         </div>
       </div>
 
