@@ -184,10 +184,10 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
       <div className="flex flex-wrap gap-1 pt-1">
         {/* MVP Badge - Show when MVP Score >= 1.0 */}
         {(() => {
-          const businessValue = task.businessValue ?? task.business_value ?? null;
+          // Business value is always 5 by default
+          const businessValue = 5;
           const storyPoints = task.storyPoints ?? task.story_points ?? null;
-          const hasValidValues = businessValue !== null && businessValue !== undefined && businessValue !== 0 &&
-                                 storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
+          const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
           const mvpScore = (hasValidValues && storyPoints > 0) ? businessValue / storyPoints : 0;
           
           if (mvpScore >= 1.0) {

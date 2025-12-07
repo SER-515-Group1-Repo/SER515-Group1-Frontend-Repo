@@ -13,7 +13,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     status: "",
     acceptanceCriteria: [],
     storyPoints: "",
-    businessValue: "",
     moscowPriority: "",
     assignees: [],
     tags: [],
@@ -66,17 +65,12 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       const storyPointsValue = story.storyPoints ?? story.story_points ?? null;
       const storyPointsFormValue = (storyPointsValue === null || storyPointsValue === undefined || storyPointsValue === 0) ? "" : storyPointsValue;
       
-      // Handle business value - convert null/undefined/0 to empty string for form display
-      const businessValueValue = story.businessValue ?? story.business_value ?? null;
-      const businessValueFormValue = (businessValueValue === null || businessValueValue === undefined || businessValueValue === 0) ? "" : businessValueValue;
-      
       setFormData({
         title: story.title || "",
         description: story.description || "",
         status: story.status || "",
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
         storyPoints: storyPointsFormValue,
-        businessValue: businessValueFormValue,
         moscowPriority: moscowPriority,
         assignees: parsedAssignees,
         tags: parsedTags,
@@ -175,15 +169,12 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       ? formData.moscowPriority.trim() 
       : null;
     
-    // Handle story points and business value - convert empty string, 0, or null to null
+    // Handle story points - convert empty string, 0, or null to null
     // Empty string means user cleared the field
+    // Business value is always 5 by default, not sent to backend
     const storyPointsValue = (formData.storyPoints === null || formData.storyPoints === undefined || formData.storyPoints === "" || formData.storyPoints === 0)
       ? null
       : (typeof formData.storyPoints === 'string' ? parseInt(formData.storyPoints) : formData.storyPoints);
-    
-    const businessValueValue = (formData.businessValue === null || formData.businessValue === undefined || formData.businessValue === "" || formData.businessValue === 0)
-      ? null
-      : (typeof formData.businessValue === 'string' ? parseInt(formData.businessValue) : formData.businessValue);
     
     // Build submit data - send only snake_case (backend standard) to avoid duplicates
     // Don't spread story/formData to avoid duplicate fields
@@ -197,7 +188,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       tags: formData.tags || [],
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
       story_points: storyPointsValue,
-      business_value: businessValueValue,
       moscow_priority: moscowPriorityValue,
       activity: newComments,
     };
@@ -305,39 +295,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             ))}
           </select>
           <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
-        </div>
-      </div>
-
-      {/* Business Value */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="edit-business-value" className="text-right">
-          Business Value
-        </Label>
-        <div className="col-span-3">
-          <Input
-            id="edit-business-value"
-            type="number"
-            min="0"
-            max="10"
-            step="1"
-            placeholder="e.g., 8 (0-10) or leave empty"
-            value={formData.businessValue === null || formData.businessValue === undefined || formData.businessValue === "" ? "" : String(formData.businessValue)}
-            onChange={(e) => {
-              const val = e.target.value;
-              // When user clears the field, set to empty string (will be converted to null on submit)
-              if (val === "" || val === null) {
-                setFormData({ ...formData, businessValue: "" });
-              } else {
-                const num = parseInt(val);
-                if (!isNaN(num) && num >= 0 && num <= 10) {
-                  setFormData({ ...formData, businessValue: num });
-                }
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Product Owner assigns value (1-10). MVP Score = BV / SP
-          </p>
         </div>
       </div>
 
