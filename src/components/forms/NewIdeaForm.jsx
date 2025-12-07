@@ -157,6 +157,110 @@ const NewIdeaForm = ({
         />
       </div>
 
+      {/* Acceptance Criteria */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label className="text-right pt-2">Acceptance Criteria</Label>
+        <div className="col-span-3 space-y-2">
+          {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground w-6">
+                {index + 1}.
+              </span>
+              <Input
+                placeholder={`Enter criterion ${index + 1}...`}
+                value={criteria}
+                onChange={(e) => updateCriteria(index, e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeCriterion(index)}
+                className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addCriterion}
+              disabled={(newIdea.acceptanceCriteria || []).length >= 5}
+            >
+              + Add Criterion
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {(newIdea.acceptanceCriteria || []).length}/5 criteria
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Story Points */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="story-points" className="text-right">
+          Story Points
+        </Label>
+        <div className="col-span-3">
+          <Input
+            id="story-points"
+            type="number"
+            min="0"
+            max="100"
+            step="1"
+            placeholder="e.g., 8 (0-100)"
+            value={newIdea.storyPoints ?? ""}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "" || val === null) {
+                setNewIdea({ ...newIdea, storyPoints: null });
+              } else {
+                const num = parseInt(val);
+                if (!isNaN(num) && num >= 0 && num <= 100) {
+                  setNewIdea({ ...newIdea, storyPoints: num });
+                }
+              }
+            }}
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            Valid range: 0-100
+          </p>
+        </div>
+      </div>
+
+      {/* MoSCoW Priority */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="moscow-priority" className="text-right">
+          MoSCoW Priority
+        </Label>
+        <div className="col-span-3">
+          <select
+            id="moscow-priority"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            value={newIdea.moscowPriority || ""}
+            onChange={(e) =>
+              setNewIdea({
+                ...newIdea,
+                moscowPriority: e.target.value || null,
+              })
+            }
+          >
+            <option value="">Select priority (optional)</option>
+            <option value="Must">Must</option>
+            <option value="Should">Should</option>
+            <option value="Could">Could</option>
+            <option value="Won't">Won't</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Override MVP score sorting with MoSCoW priority
+          </p>
+        </div>
+      </div>
+
       {/* Status */}
       <div className="grid grid-cols-4 items-center gap-4">
         <Label htmlFor="status" className="text-right">
