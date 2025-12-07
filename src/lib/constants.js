@@ -80,7 +80,7 @@ export const FIELD_VISIBILITY = {
   },
   "Ready To Commit": {
     acceptanceCriteria: true,
-    storyPoints: false,
+    storyPoints: true,
     bv: true,
     refinementSessionScheduled: true,
     groomed: true,

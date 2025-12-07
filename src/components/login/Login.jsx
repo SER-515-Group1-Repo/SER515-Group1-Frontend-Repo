@@ -33,38 +33,7 @@ const LoginPage = ({ type }) => {
   );
   const [errorState, setErrorState] = useState(initialState);
 
-  // Real-time validation as user types
-  useEffect(() => {
-    const errors = { ...initialState, rePassword: "" };
-    if (!userData?.email) {
-      errors.email = "Email is required";
-    } else if (!emailRegex.test(userData.email)) {
-      errors.email = "Enter a valid email address";
-    }
-    if (!userData?.password) {
-      errors.password = "Password is required";
-    } else if (userData.password.length < 8) {
-      errors.password = "Password must be at least 8 characters";
-    }
-    if (type === "sign-up") {
-      if (!userData?.name) {
-        errors.name = "Name is required";
-      } else if (!nameRegex.test(userData.name)) {
-        errors.name = "Name should contain only letters and spaces";
-      }
-      if (!userData?.userName) {
-        errors.userName = "User name is required";
-      } else if (!userNameRegex.test(userData.userName)) {
-        errors.userName = "User name must be alphanumeric (no spaces)";
-      }
-      if (!rePassword) {
-        errors.rePassword = "Please re-enter your password";
-      } else if (userData.password !== rePassword) {
-        errors.rePassword = "Passwords do not match";
-      }
-    }
-    setErrorState(errors);
-  }, [userData, rePassword, type]);
+  // NOTE: Real-time validation removed — keep validation at form submit only
 
   // Forgot Password Modal State
   const [showForgotPassword, setShowForgotPassword] = useState(false);

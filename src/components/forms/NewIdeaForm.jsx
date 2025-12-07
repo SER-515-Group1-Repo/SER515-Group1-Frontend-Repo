@@ -133,27 +133,7 @@ const NewIdeaForm = ({
     setNewIdea({ ...newIdea, assignees: [] });
   };
 
-  // Real-time validation
-  useEffect(() => {
-    const errors = {};
-    if (!newIdea.title || newIdea.title.trim() === "") {
-      errors.title = "Title is required";
-    }
-    if (!newIdea.description || newIdea.description.trim() === "") {
-      errors.description = "Description is required";
-    }
-    if (visibleFields.bv && (newIdea.bv === null || newIdea.bv === undefined || newIdea.bv === "")) {
-      errors.bv = "Business value is required";
-    } else if (visibleFields.bv && (newIdea.bv < 1 || newIdea.bv > 100)) {
-      errors.bv = "Business value must be 1-100";
-    }
-    if (visibleFields.storyPoints && (newIdea.storyPoints === null || newIdea.storyPoints === undefined || newIdea.storyPoints === "")) {
-      errors.storyPoints = "Story points are required";
-    } else if (visibleFields.storyPoints && (newIdea.storyPoints < 0 || newIdea.storyPoints > 100)) {
-      errors.storyPoints = "Story points must be 0-100";
-    }
-    setErrorState(errors);
-  }, [newIdea, visibleFields]);
+  // Note: Real-time validation removed for NewIdeaForm — validation occurs when creating the idea (handleSaveIdea in the dashboard page)
 
   return (
     <div className="space-y-4">
