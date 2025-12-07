@@ -165,6 +165,14 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
         </div>
       )}
 
+      {/* Story Points Section */}
+{task?.storyPoints && (
+  <div className="flex items-center gap-1.5 bg-cyan-50 px-2.5 py-1 rounded-md text-xs w-fit border border-cyan-200 shadow-sm">
+    <span className="text-cyan-700 font-semibold">{task.storyPoints}</span>
+    <span className="text-cyan-600">points</span>
+  </div>
+)}
+
       {/* Tags Section */}
       {parsedTags.length > 0 && (
         <div className="flex flex-wrap gap-1 pt-1">
