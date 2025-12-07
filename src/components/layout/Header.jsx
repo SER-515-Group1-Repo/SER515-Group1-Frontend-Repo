@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { ActionPopover } from "@/components/common/ActionPopover";
 import { RoleAssignmentModal } from "@/components/common/RoleAssignmentModal";
 
-export function Header({ onCreateIdeaClick }) {
+export function Header({ onCreateIdeaClick, onExportClick }) {
   const navigate = useNavigate();
   const { logout, role: userRole } = useAuth();
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -30,8 +30,11 @@ export function Header({ onCreateIdeaClick }) {
 
       <div className="flex items-center space-x-4">
         {}
-        <Button onClick={() => onCreateIdeaClick("Proposed")}>
+        <Button onClick={() => onCreateIdeaClick("Backlog")}>
           + Create Idea
+        </Button>
+        <Button variant="secondary" onClick={() => onExportClick()}>
+          Export
         </Button>
 
         <ActionPopover trigger={settingsTrigger} contentClassName="w-48 p-2">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { UserCircle2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,8 @@ const LoginPage = ({ type }) => {
     localStorage.getItem("rememberMe") === "true" || false
   );
   const [errorState, setErrorState] = useState(initialState);
+
+  // NOTE: Real-time validation removed — keep validation at form submit only
 
   // Forgot Password Modal State
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -319,6 +321,7 @@ const LoginPage = ({ type }) => {
                   onChange={(e) =>
                     setUserData({ ...userData, name: e.target.value })
                   }
+                  className={errorState.name ? "border-red-500" : ""}
                 />
                 {errorState.name && (
                   <p className="text-red-500 text-sm">{errorState.name}</p>
@@ -335,6 +338,7 @@ const LoginPage = ({ type }) => {
                 onChange={(e) =>
                   setUserData({ ...userData, email: e.target.value })
                 }
+                className={errorState.email ? "border-red-500" : ""}
               />
               {errorState.email && (
                 <p className="text-red-500 text-sm">{errorState.email}</p>
@@ -352,6 +356,7 @@ const LoginPage = ({ type }) => {
                   onChange={(e) =>
                     setUserData({ ...userData, userName: e.target.value })
                   }
+                  className={errorState.userName ? "border-red-500" : ""}
                 />
                 {errorState.userName && (
                   <p className="text-red-500 text-sm">{errorState.userName}</p>
@@ -371,6 +376,7 @@ const LoginPage = ({ type }) => {
                 onChange={(e) =>
                   setUserData({ ...userData, password: e.target.value })
                 }
+                className={errorState.password ? "border-red-500" : ""}
               />
               {errorState.password && (
                 <p className="text-red-500 text-sm">{errorState.password}</p>
@@ -386,6 +392,7 @@ const LoginPage = ({ type }) => {
                   placeholder="Re-Enter Your Password"
                   value={rePassword}
                   onChange={(e) => setRePassword(e.target.value)}
+                  className={errorState.rePassword ? "border-red-500" : ""}
                 />
                 {errorState.rePassword && (
                   <p className="text-red-500 text-sm">

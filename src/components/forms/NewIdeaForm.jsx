@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Label } from "@/components/ui/label";
-import { STATUS_OPTIONS, STORY_POINTS_OPTIONS, getVisibleFields } from "../../lib/constants";
+import {
+  STATUS_OPTIONS,
+  STORY_POINTS_OPTIONS,
+  getVisibleFields,
+} from "../../lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import TagsDropdown from "@/components/common/TagsDropdown";
@@ -13,12 +17,17 @@ const NewIdeaForm = ({
   teamMembers = [],
   selectedColumn,
 }) => {
+  // Validation state
+  const [errorState, setErrorState] = useState({});
   const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
   const assigneeRef = useRef(null);
 
   // Get field visibility based on current status
   const currentStatus = newIdea.status || selectedColumn || "Backlog";
-  const visibleFields = useMemo(() => getVisibleFields(currentStatus), [currentStatus]);
+  const visibleFields = useMemo(
+    () => getVisibleFields(currentStatus),
+    [currentStatus]
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -101,7 +110,9 @@ const NewIdeaForm = ({
   };
 
   const removeRefinementDependency = (index) => {
-    const updated = (newIdea.refinementDependencies || []).filter((_, i) => i !== index);
+    const updated = (newIdea.refinementDependencies || []).filter(
+      (_, i) => i !== index
+    );
     setNewIdea({ ...newIdea, refinementDependencies: updated });
   };
 
@@ -122,6 +133,8 @@ const NewIdeaForm = ({
     setNewIdea({ ...newIdea, assignees: [] });
   };
 
+  // Note: Real-time validation removed for NewIdeaForm — validation occurs when creating the idea (handleSaveIdea in the dashboard page)
+
   return (
     <div className="space-y-4">
       {/* Title */}
@@ -132,11 +145,12 @@ const NewIdeaForm = ({
         <Input
           id="title"
           placeholder="e.g. Improve task filter UX"
-          className="col-span-3"
+          className={`col-span-3 ${errorState.title ? "border-red-500" : ""}`}
           value={newIdea.title || ""}
           onChange={(e) => setNewIdea({ ...newIdea, title: e.target.value })}
           required
         />
+        {errorState.title && <p className="text-red-500 text-sm col-span-4">{errorState.title}</p>}
       </div>
 
       {/* Description */}
@@ -148,13 +162,14 @@ const NewIdeaForm = ({
           id="description"
           rows={4}
           placeholder="Briefly describe the idea…"
-          className="col-span-3 min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical"
+          className={`col-span-3 min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical ${errorState.description ? "border-red-500" : ""}`}
           value={newIdea.description || ""}
           onChange={(e) =>
             setNewIdea({ ...newIdea, description: e.target.value })
           }
           required
         />
+        {errorState.description && <p className="text-red-500 text-sm col-span-4">{errorState.description}</p>}
       </div>
 
       {/* Acceptance Criteria */}
@@ -200,37 +215,41 @@ const NewIdeaForm = ({
         </div>
       </div>
 
-      {/* Story Points */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="story-points" className="text-right">
-          Story Points
-        </Label>
-        <div className="col-span-3">
-          <Input
-            id="story-points"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            placeholder="e.g., 8 (0-100)"
-            value={newIdea.storyPoints ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || val === null) {
-                setNewIdea({ ...newIdea, storyPoints: null });
-              } else {
-                const num = parseInt(val);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                  setNewIdea({ ...newIdea, storyPoints: num });
+      {/* Story Points - only show if required by FIELD_VISIBILITY */}
+      {visibleFields.storyPoints && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="story-points" className="text-right">
+            Story Points
+          </Label>
+          <div className="col-span-3">
+            <Input
+              id="story-points"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              placeholder="e.g., 8 (0-100)"
+              value={newIdea.storyPoints ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || val === null) {
+                  setNewIdea({ ...newIdea, storyPoints: null });
+                } else {
+                  const num = parseInt(val);
+                  if (!isNaN(num) && num >= 0 && num <= 100) {
+                    setNewIdea({ ...newIdea, storyPoints: num });
+                  }
                 }
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Valid range: 0-100
-          </p>
+              }}
+              className={errorState.storyPoints ? "border-red-500" : ""}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Valid range: 0-100
+            </p>
+            {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MoSCoW Priority */}
       <div className="grid grid-cols-4 items-center gap-4">
@@ -305,55 +324,12 @@ const NewIdeaForm = ({
                   }
                 }
               }}
+              className={errorState.bv ? "border-red-500" : ""}
             />
             <p className="text-xs text-muted-foreground mt-1">
               Required to move from Backlog to Proposed
             </p>
-          </div>
-        </div>
-      )}
-
-      {/* Acceptance Criteria - visible from Proposed onwards */}
-      {visibleFields.acceptanceCriteria && (
-        <div className="grid grid-cols-4 items-start gap-4">
-          <Label className="text-right pt-2">Acceptance Criteria</Label>
-          <div className="col-span-3 space-y-2">
-            {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
-              <div key={index} className="flex gap-2 items-center">
-                <span className="text-sm text-muted-foreground w-6">
-                  {index + 1}.
-                </span>
-                <Input
-                  placeholder={`Enter criterion ${index + 1}...`}
-                  value={criteria}
-                  onChange={(e) => updateCriteria(index, e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeCriterion(index)}
-                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addCriterion}
-                disabled={(newIdea.acceptanceCriteria || []).length >= 5}
-              >
-                + Add Criterion
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {(newIdea.acceptanceCriteria || []).length}/5 criteria
-              </span>
-            </div>
+            {errorState.bv && <p className="text-red-500 text-sm">{errorState.bv}</p>}
           </div>
         </div>
       )}
@@ -361,8 +337,10 @@ const NewIdeaForm = ({
       {/* Needs Refinement Fields */}
       {visibleFields.refinementSessionScheduled && (
         <div className="border rounded-lg p-4 space-y-3 bg-blue-50/50">
-          <h4 className="font-medium text-sm text-blue-800">Refinement Checklist</h4>
-          
+          <h4 className="font-medium text-sm text-blue-800">
+            Refinement Checklist
+          </h4>
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="refinementSessionScheduled"
@@ -371,7 +349,10 @@ const NewIdeaForm = ({
                 setNewIdea({ ...newIdea, refinementSessionScheduled: checked })
               }
             />
-            <Label htmlFor="refinementSessionScheduled" className="text-sm font-normal">
+            <Label
+              htmlFor="refinementSessionScheduled"
+              className="text-sm font-normal"
+            >
               Refinement Session Scheduled
             </Label>
           </div>
@@ -472,8 +453,10 @@ const NewIdeaForm = ({
 
       {visibleFields.refinementDependencies && (
         <div className="border rounded-lg p-4 space-y-3 bg-purple-50/50">
-          <h4 className="font-medium text-sm text-purple-800">In Refinement Requirements</h4>
-          
+          <h4 className="font-medium text-sm text-purple-800">
+            In Refinement Requirements
+          </h4>
+
           {/* Refinement Dependencies */}
           <div className="space-y-2">
             <Label className="text-sm">Refinement Dependencies</Label>
@@ -482,7 +465,9 @@ const NewIdeaForm = ({
                 <Input
                   placeholder={`Refinement dependency ${index + 1}...`}
                   value={dep}
-                  onChange={(e) => updateRefinementDependency(index, e.target.value)}
+                  onChange={(e) =>
+                    updateRefinementDependency(index, e.target.value)
+                  }
                   className="flex-1"
                 />
                 <Button
@@ -538,8 +523,10 @@ const NewIdeaForm = ({
       {/* Ready To Commit Fields */}
       {visibleFields.sprintCapacity && (
         <div className="border rounded-lg p-4 space-y-3 bg-green-50/50">
-          <h4 className="font-medium text-sm text-green-800">Sprint Planning</h4>
-          
+          <h4 className="font-medium text-sm text-green-800">
+            Sprint Planning
+          </h4>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="sprintCapacity" className="text-right text-sm">
               Sprint Capacity
