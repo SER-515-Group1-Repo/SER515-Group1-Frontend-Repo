@@ -1,13 +1,15 @@
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, Users } from "lucide-react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { ActionPopover } from "@/components/common/ActionPopover";
+import { RoleAssignmentModal } from "@/components/common/RoleAssignmentModal";
 
 export function Header({ onCreateIdeaClick }) {
   const navigate = useNavigate();
-
-  const { logout } = useAuth();
+  const { logout, role: userRole } = useAuth();
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   const settingsTrigger = (
     <Button variant="outline" size="icon">
@@ -31,7 +33,18 @@ export function Header({ onCreateIdeaClick }) {
         <Button onClick={() => onCreateIdeaClick("Proposed")}>
           + Create Idea
         </Button>
+
         <ActionPopover trigger={settingsTrigger} contentClassName="w-48 p-2">
+          {userRole === "product-manager" && (
+            <Button
+              variant="ghost"
+              className="w-full justify-start"
+              onClick={() => setShowRoleModal(true)}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              <span>Assign Role</span>
+            </Button>
+          )}
           <Button
             variant="ghost"
             className="w-full justify-start"
@@ -42,6 +55,12 @@ export function Header({ onCreateIdeaClick }) {
           </Button>
         </ActionPopover>
       </div>
+
+      {/* Role Assignment Modal */}
+      <RoleAssignmentModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+      />
     </header>
   );
 }
