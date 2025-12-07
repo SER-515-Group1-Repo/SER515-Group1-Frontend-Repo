@@ -21,9 +21,14 @@ import apiClient from "@/api/axios";
 import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
-import { STORY_POINTS_OPTIONS } from "@/lib/constants";
+import { STORY_POINTS_OPTIONS, STATUS_OPTIONS, validateTransition } from "@/lib/constants";
 
 const initialColumns = [
+  {
+    title: "Backlog",
+    dotColor: "bg-slate-400",
+    tasks: [],
+  },
   {
     title: "Proposed",
     dotColor: "bg-gray-400",
@@ -403,6 +408,23 @@ const DashboardPage = () => {
     if (isSaving || operationInProgress) {
       toastNotify("Another operation is in progress. Please wait.", "warning");
       return;
+    }
+
+    // Validate the transition
+    const validation = validateTransition(task, task.status, newStatus);
+    
+    if (!validation.valid) {
+      // Show error and block the transition
+      toastNotify(
+        `Cannot move to ${newStatus}: ${validation.missingFields.join(", ")} required. Edit the story to add missing fields.`,
+        "error"
+      );
+      return;
+    }
+
+    if (validation.isBackward) {
+      // Allow backward transitions with a warning
+      toastNotify("Moving story backward in the workflow", "warning");
     }
 
     try {
