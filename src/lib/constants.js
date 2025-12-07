@@ -13,7 +13,8 @@ export const STATUS_OPTIONS = [
 
 // Fibonacci sequence values for story points (Agile/Scrum industry standard)
 // Values beyond 13 indicate story should be broken down into smaller tasks
-export const STORY_POINTS_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21];
+// Note: 0 is excluded because a 0-point story means no effort = not a real story
+export const STORY_POINTS_OPTIONS = [1, 2, 3, 5, 8, 13, 21];
 
 /**
  * Field visibility configuration per status.
@@ -24,7 +25,7 @@ export const STORY_POINTS_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21];
  * - Backlog → Proposed: description, bv required
  * - Proposed → Needs Refinement: description, bv, acceptance_criteria required
  * - Needs Refinement → In Refinement: refinement_session_scheduled, groomed, dependencies, session_documented required
- * - In Refinement → Ready To Commit: story_points, acceptance_criteria, refinement_dependencies, team_approval, po_approval required
+ * - In Refinement → Ready To Commit: story_points, acceptance_criteria, dependencies, team_approval, po_approval required
  * - Ready To Commit → Sprint Ready: sprint_capacity, skills_available, team_commits, tasks_identified required
  */
 export const FIELD_VISIBILITY = {
@@ -39,7 +40,6 @@ export const FIELD_VISIBILITY = {
     dependencies: false,
     sessionDocumented: false,
     // In Refinement fields
-    refinementDependencies: false,
     teamApproval: false,
     poApproval: false,
     // Ready To Commit fields
@@ -59,7 +59,6 @@ export const FIELD_VISIBILITY = {
     dependencies: false,
     sessionDocumented: false,
     // In Refinement fields
-    refinementDependencies: false,
     teamApproval: false,
     poApproval: false,
     // Ready To Commit fields
@@ -79,7 +78,6 @@ export const FIELD_VISIBILITY = {
     dependencies: true,
     sessionDocumented: true,
     // In Refinement fields
-    refinementDependencies: false,
     teamApproval: false,
     poApproval: false,
     // Ready To Commit fields
@@ -99,7 +97,6 @@ export const FIELD_VISIBILITY = {
     dependencies: true,
     sessionDocumented: true,
     // In Refinement fields - required to move to Ready To Commit
-    refinementDependencies: true,
     teamApproval: true,
     poApproval: true,
     // Ready To Commit fields
@@ -119,7 +116,6 @@ export const FIELD_VISIBILITY = {
     dependencies: true,
     sessionDocumented: true,
     // In Refinement fields
-    refinementDependencies: true,
     teamApproval: true,
     poApproval: true,
     // Ready To Commit fields - required to move to Sprint Ready
@@ -137,7 +133,6 @@ export const FIELD_VISIBILITY = {
     groomed: true,
     dependencies: true,
     sessionDocumented: true,
-    refinementDependencies: true,
     teamApproval: true,
     poApproval: true,
     sprintCapacity: true,

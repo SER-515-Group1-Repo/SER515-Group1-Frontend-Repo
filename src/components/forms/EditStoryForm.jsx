@@ -18,6 +18,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     status: "",
     acceptanceCriteria: [],
     storyPoints: "",
+    moscowPriority: "",
     assignees: [],
     tags: [],
     // New fields for validation
@@ -55,7 +56,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   }, []);
 
   useEffect(() => {
-    if (story) {
+    // Only initialize form when story ID changes (new story selected), not on every story prop update
+    if (story && story.id) {
       // Parse tags - could be string, array, or empty
       let parsedTags = [];
       if (story.tags) {
@@ -76,6 +78,14 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         }
       }
       
+      // Handle moscowPriority - check for null/undefined/empty string explicitly
+      const moscowPriorityValue = story.moscowPriority ?? story.moscow_priority ?? null;
+      const moscowPriority = (moscowPriorityValue === null || moscowPriorityValue === undefined || moscowPriorityValue === "") ? "" : moscowPriorityValue;
+      
+      // Handle story points - convert null/undefined/0 to empty string for form display
+      const storyPointsValue = story.storyPoints ?? story.story_points ?? null;
+      const storyPointsFormValue = (storyPointsValue === null || storyPointsValue === undefined || storyPointsValue === 0) ? "" : storyPointsValue;
+
       const currentStatus = story.status || "";
       
       setFormData({
@@ -83,7 +93,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         description: story.description || "",
         status: currentStatus,
         acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
-        storyPoints: story.storyPoints !== undefined && story.storyPoints !== null ? story.storyPoints : "",
+        storyPoints: storyPointsFormValue,
+        moscowPriority: moscowPriority,
         assignees: parsedAssignees,
         tags: parsedTags,
         // New validation fields - use camelCase from story or snake_case fallback
@@ -119,7 +130,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         setActivity([]);
       }
     }
-  }, [story]);
+  }, [story?.id]); // Only re-initialize when story ID changes, not when story properties update
 
   // Acceptance Criteria functions
   const updateCriteria = (index, value) => {
@@ -234,21 +245,40 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     // Get only NEW user-added comments (items without isFromBackend flag)
     const newComments = finalActivity.filter((item) => item.text && !item.isFromBackend);
     
+    // Handle moscowPriority - convert empty string to null, preserve actual values
+    const moscowPriorityValue = (formData.moscowPriority !== null && 
+                                 formData.moscowPriority !== undefined && 
+                                 formData.moscowPriority !== "" && 
+                                 formData.moscowPriority.trim() !== "") 
+      ? formData.moscowPriority.trim() 
+      : null;
+    
+    // Handle story points - convert empty string, 0, or null to null
+    // Empty string means user cleared the field
+    // Business value is always 5 by default, not sent to backend
+    const storyPointsValue = (formData.storyPoints === null || formData.storyPoints === undefined || formData.storyPoints === "" || formData.storyPoints === 0)
+      ? null
+      : (typeof formData.storyPoints === 'string' ? parseInt(formData.storyPoints) : formData.storyPoints);
+    
+    // Build submit data - send only snake_case (backend standard) to avoid duplicates
+    // Don't spread story/formData to avoid duplicate fields
+    // Include id from story so handleSaveEdit can use it
     const submitData = {
-      ...story,
-      ...formData,
-      acceptanceCriteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      storyPoints: formData.storyPoints !== "" ? parseInt(formData.storyPoints) : null,
-      // Send snake_case versions for backend compatibility
+      id: story.id, // Include id so backend knows which story to update
+      title: formData.title,
+      description: formData.description,
+      status: formData.status,
+      assignees: formData.assignees || [],
+      tags: formData.tags || [],
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
-      story_points: formData.storyPoints !== "" ? parseInt(formData.storyPoints) : null,
+      story_points: storyPointsValue,
+      moscow_priority: moscowPriorityValue,
       // Validation fields - snake_case for backend
       bv: formData.bv !== null && formData.bv !== "" ? parseInt(formData.bv) : null,
       refinement_session_scheduled: formData.refinementSessionScheduled || false,
       groomed: formData.groomed || false,
       session_documented: formData.sessionDocumented || false,
       dependencies: (formData.dependencies || []).filter((d) => d && d.trim()),
-      refinement_dependencies: (formData.refinementDependencies || []).filter((d) => d && d.trim()),
       team_approval: formData.teamApproval || false,
       po_approval: formData.poApproval || false,
       sprint_capacity: formData.sprintCapacity !== null && formData.sprintCapacity !== "" 
@@ -294,6 +324,106 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           }
           required
         />
+      </div>
+
+      {/* Acceptance Criteria */}
+      <div className="grid grid-cols-4 items-start gap-4">
+        <Label className="text-right pt-2">Acceptance Criteria</Label>
+        <div className="col-span-3 space-y-2">
+          {formData.acceptanceCriteria.map((criteria, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+              <Input
+                placeholder={`Enter criterion ${index + 1}...`}
+                value={criteria}
+                onChange={(e) => updateCriteria(index, e.target.value)}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => removeCriterion(index)}
+                className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+          <div className="flex items-center justify-between pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addCriterion}
+              disabled={formData.acceptanceCriteria.length >= 5}
+            >
+              + Add Criterion
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              {formData.acceptanceCriteria.length}/5 criteria
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Story Points */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="edit-story-points" className="text-right">
+          Story Points
+        </Label>
+        <div className="col-span-3">
+          <select
+            id="edit-story-points"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormData({ 
+                ...formData, 
+                storyPoints: val === "" ? "" : parseInt(val) 
+              });
+            }}
+          >
+            <option value="">Select story points...</option>
+            {STORY_POINTS_OPTIONS.map((points) => (
+              <option key={points} value={points}>
+                {points}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
+        </div>
+      </div>
+
+      {/* MoSCoW Priority */}
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="edit-moscow-priority" className="text-right">
+          MoSCoW Priority
+        </Label>
+        <div className="col-span-3">
+          <select
+            id="edit-moscow-priority"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            value={formData.moscowPriority === null || formData.moscowPriority === undefined ? "" : formData.moscowPriority}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormData({
+                ...formData,
+                moscowPriority: val === "" ? "" : val,
+              });
+            }}
+          >
+            <option value="">Select priority (optional)</option>
+            <option value="Must">Must</option>
+            <option value="Should">Should</option>
+            <option value="Could">Could</option>
+            <option value="Won't">Won't</option>
+          </select>
+          <p className="text-xs text-muted-foreground mt-1">
+            Override MVP score sorting with MoSCoW priority
+          </p>
+        </div>
       </div>
 
       {/* Status */}

@@ -179,6 +179,41 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
           ))}
         </div>
       )}
+
+      {/* MVP Badge and MoSCoW Priority Badge */}
+      <div className="flex flex-wrap gap-1 pt-1">
+        {/* MVP Badge - Show when MVP Score >= 1.0 */}
+        {(() => {
+          // Use actual bv field, default to 0 if not set
+          const businessValue = task.bv ?? 0;
+          const storyPoints = task.storyPoints ?? task.story_points ?? null;
+          const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+          const mvpScore = hasValidValues ? businessValue / storyPoints : 0;
+          
+          if (mvpScore >= 1.0) {
+            return (
+              <div className="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded flex items-center gap-1 font-semibold">
+                MVP
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        {/* MoSCoW Priority Badge - Show when priority is set (not null/empty) */}
+        {(() => {
+          const moscowPriority = task.moscowPriority ?? task.moscow_priority ?? null;
+          if (moscowPriority && moscowPriority !== "" && moscowPriority !== "Select priority (optional)") {
+            return (
+              <div className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded flex items-center gap-1">
+                <Tag className="h-2.5 w-2.5" />
+                {moscowPriority}
+              </div>
+            );
+          }
+          return null;
+        })()}
+      </div>
     </div>
   );
 }
