@@ -21,7 +21,7 @@ import apiClient from "@/api/axios";
 import { applyFilters } from "@/components/forms/FilterDropdown";
 import NewIdeaForm from "@/components/forms/NewIdeaForm";
 import { toastNotify } from "@/lib/utils";
-import { STORY_POINTS_OPTIONS, STATUS_OPTIONS, validateTransition } from "@/lib/constants";
+import { STORY_POINTS_OPTIONS, STATUS_OPTIONS } from "@/lib/constants";
 
 const initialColumns = [
   {
@@ -153,6 +153,19 @@ const DashboardPage = () => {
     tags: [],
     acceptanceCriteria: [],
     storyPoints: null,
+    // Validation fields
+    bv: null,
+    refinementSessionScheduled: false,
+    groomed: false,
+    dependencies: [],
+    sessionDocumented: false,
+    refinementDependencies: [],
+    teamApproval: false,
+    poApproval: false,
+    sprintCapacity: null,
+    skillsAvailable: false,
+    teamCommits: false,
+    tasksIdentified: false,
   });
   const [filters, setFilters] = useState(null);
 
@@ -181,6 +194,19 @@ const DashboardPage = () => {
       tags: [],
       acceptanceCriteria: [],
       storyPoints: null,
+      // Validation fields - reset all
+      bv: null,
+      refinementSessionScheduled: false,
+      groomed: false,
+      dependencies: [],
+      sessionDocumented: false,
+      refinementDependencies: [],
+      teamApproval: false,
+      poApproval: false,
+      sprintCapacity: null,
+      skillsAvailable: false,
+      teamCommits: false,
+      tasksIdentified: false,
     });
     setSelectedColumn(columnTitle);
     setIsModalOpen(true);
@@ -222,17 +248,40 @@ const DashboardPage = () => {
         (c) => c && c.trim()
       );
 
+      // Filter out empty dependencies
+      const filteredDependencies = (newIdea.dependencies || []).filter(
+        (d) => d && d.trim()
+      );
+
+      const filteredRefinementDependencies = (newIdea.refinementDependencies || []).filter(
+        (d) => d && d.trim()
+      );
+
       const payload = {
         title: newIdea.title.trim(),
         description: newIdea.description.trim(),
         assignees: newIdea.assignees || [],
         tags: newIdea.tags || [],
-        status: newIdea.status || selectedColumn || "Proposed",
+        status: newIdea.status || selectedColumn || "Backlog",
         acceptance_criteria: filteredCriteria,
         story_points:
           newIdea.storyPoints !== null && newIdea.storyPoints !== ""
             ? parseInt(newIdea.storyPoints)
             : null,
+        // Validation fields for status transitions
+        bv: newIdea.bv !== null && newIdea.bv !== "" ? parseInt(newIdea.bv) : null,
+        refinement_session_scheduled: newIdea.refinementSessionScheduled || false,
+        groomed: newIdea.groomed || false,
+        dependencies: filteredDependencies,
+        session_documented: newIdea.sessionDocumented || false,
+        refinement_dependencies: filteredRefinementDependencies,
+        team_approval: newIdea.teamApproval || false,
+        po_approval: newIdea.poApproval || false,
+        sprint_capacity: newIdea.sprintCapacity !== null && newIdea.sprintCapacity !== "" 
+          ? parseInt(newIdea.sprintCapacity) : null,
+        skills_available: newIdea.skillsAvailable || false,
+        team_commits: newIdea.teamCommits || false,
+        tasks_identified: newIdea.tasksIdentified || false,
       };
 
       const { data } = await apiClient.post(
@@ -273,6 +322,18 @@ const DashboardPage = () => {
         tags: [],
         acceptanceCriteria: [],
         storyPoints: null,
+        bv: null,
+        refinementSessionScheduled: false,
+        groomed: false,
+        dependencies: [],
+        sessionDocumented: false,
+        refinementDependencies: [],
+        teamApproval: false,
+        poApproval: false,
+        sprintCapacity: null,
+        skillsAvailable: false,
+        teamCommits: false,
+        tasksIdentified: false,
       });
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
@@ -442,23 +503,6 @@ const DashboardPage = () => {
     if (isSaving || operationInProgress) {
       toastNotify("Another operation is in progress. Please wait.", "warning");
       return;
-    }
-
-    // Validate the transition
-    const validation = validateTransition(task, task.status, newStatus);
-    
-    if (!validation.valid) {
-      // Show error and block the transition
-      toastNotify(
-        `Cannot move to ${newStatus}: ${validation.missingFields.join(", ")} required. Edit the story to add missing fields.`,
-        "error"
-      );
-      return;
-    }
-
-    if (validation.isBackward) {
-      // Allow backward transitions with a warning
-      toastNotify("Moving story backward in the workflow", "warning");
     }
 
     try {
@@ -706,9 +750,10 @@ const DashboardPage = () => {
             : null,
       };
 
-      // Check if status changed - use updatedTask (the request data) not stale selectedTask
-      const oldStatus = updatedTask.status;
-      const statusChanged = oldStatus !== savedTask.status;
+      // Check if status changed - compare ORIGINAL status from selectedTask with NEW status from backend
+      const originalStatus = selectedTask?.status;
+      const newStatus = savedTask.status;
+      const statusChanged = originalStatus !== newStatus;
 
       // Update local state with backend response
       setColumnData((prevColumns) => {
