@@ -209,37 +209,39 @@ const NewIdeaForm = ({
         </div>
       </div>
 
-      {/* Story Points */}
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="story-points" className="text-right">
-          Story Points
-        </Label>
-        <div className="col-span-3">
-          <Input
-            id="story-points"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            placeholder="e.g., 8 (0-100)"
-            value={newIdea.storyPoints ?? ""}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "" || val === null) {
-                setNewIdea({ ...newIdea, storyPoints: null });
-              } else {
-                const num = parseInt(val);
-                if (!isNaN(num) && num >= 0 && num <= 100) {
-                  setNewIdea({ ...newIdea, storyPoints: num });
+      {/* Story Points - only show if required by FIELD_VISIBILITY */}
+      {visibleFields.storyPoints && (
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="story-points" className="text-right">
+            Story Points
+          </Label>
+          <div className="col-span-3">
+            <Input
+              id="story-points"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              placeholder="e.g., 8 (0-100)"
+              value={newIdea.storyPoints ?? ""}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "" || val === null) {
+                  setNewIdea({ ...newIdea, storyPoints: null });
+                } else {
+                  const num = parseInt(val);
+                  if (!isNaN(num) && num >= 0 && num <= 100) {
+                    setNewIdea({ ...newIdea, storyPoints: num });
+                  }
                 }
-              }
-            }}
-          />
-          <p className="text-xs text-muted-foreground mt-1">
-            Valid range: 0-100
-          </p>
+              }}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Valid range: 0-100
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* MoSCoW Priority */}
       <div className="grid grid-cols-4 items-center gap-4">
