@@ -228,7 +228,6 @@ const DashboardPage = () => {
       acceptanceCriteria: [],
       storyPoints: null,
       moscowPriority: null,
-      // Validation fields - reset all
       bv: null,
       refinementSessionScheduled: false,
       groomed: false,
@@ -245,61 +244,177 @@ const DashboardPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleExportClick = async () => {
+  const handleExportClickJSON = async () => {
     try {
-      // Find the "Sprint Ready" column
       const sprintReadyColumn = columnData.find(
         (col) => col.title === "Sprint Ready"
       );
 
       if (!sprintReadyColumn || sprintReadyColumn.tasks.length === 0) {
-        toastNotify("No ideas in Sprint Ready column to export", "warning");
+        toastNotify("No stories in 'Sprint Ready' to export.", "warning");
         return;
       }
 
-      // Prepare CSV data
-      const headers = [
-        "ID",
-        "Title",
-        "Description",
-        "Status",
-        "Story Points",
-        "Assignees",
-        "Tags",
-        "Acceptance Criteria",
-        "Created Date",
+      const now = new Date();
+      const nowISO = now.toISOString();
+
+      const exportOwner = {
+        email: "rmarath4@asu.edu",
+        name: "Agile Dashboard Export",
+      };
+
+      // 3. Define the project's workflow statuses
+      const userStoryStatuses = [
+        {
+          name: "New",
+          slug: "new",
+          order: 1,
+          is_closed: false,
+          color: "#70728F",
+        },
+        {
+          name: "In progress",
+          slug: "in-progress",
+          order: 3,
+          is_closed: false,
+          color: "#E47C40",
+        },
+        {
+          name: "Ready for test",
+          slug: "ready-for-test",
+          order: 4,
+          is_closed: false,
+          color: "#E4CE40",
+        },
+        {
+          name: "Done",
+          slug: "done",
+          order: 5,
+          is_closed: true,
+          color: "#A8E440",
+        },
       ];
 
-      const csvContent = [
-        headers.join(","),
-        ...sprintReadyColumn.tasks.map((task) => {
-          const assignees = Array.isArray(task.assignees)
-            ? task.assignees.join("; ")
-            : "";
-          const tags = Array.isArray(task.tags) ? task.tags.join("; ") : "";
-          const criteria = Array.isArray(
-            task.acceptanceCriteria || task.acceptance_criteria
-          )
-            ? (task.acceptanceCriteria || task.acceptance_criteria).join("; ")
-            : "";
+      // 4. Define the project's point system
+      const storyPoints = [
+        { name: "?", order: 0, value: null },
+        { name: "1", order: 1, value: 1 },
+        { name: "2", order: 2, value: 2 },
+        { name: "3", order: 3, value: 3 },
+        { name: "5", order: 4, value: 5 },
+        { name: "8", order: 5, value: 8 },
+        { name: "13", order: 6, value: 13 },
+        { name: "21", order: 7, value: 21 },
+      ];
 
-          return [
-            task.id || "",
-            `"${(task.title || "").replace(/"/g, '""')}"`,
-            `"${(task.description || "").replace(/"/g, '""')}"`,
-            task.status || "",
-            task.storyPoints || task.story_points || "",
-            `"${assignees}"`,
-            `"${tags}"`,
-            `"${criteria}"`,
-            task.created_at || "",
-          ].join(",");
-        }),
-      ].join("\n");
+      // 5. Define project roles
+      const projectRoles = [
+        { name: "Developer", slug: "dev", order: 40 },
+        { name: "Product Manager", slug: "product-manager", order: 50 },
+        { name: "Scrum Master", slug: "scrum-master", order: 60 },
+        { name: "Stakeholder", slug: "stakeholder", order: 70 },
+      ];
 
-      // Create blob and download
-      const blob = new Blob([csvContent], {
-        type: "text/csv;charset=utf-8;",
+      const mappedUserStories = sprintReadyColumn.tasks.map((task, index) => {
+        const acceptanceCriteriaMarkdown = (
+          task.acceptanceCriteria ||
+          task.acceptance_criteria ||
+          []
+        )
+          .filter((ac) => ac && ac.trim() !== "")
+          .map((ac) => `- ${ac}`)
+          .join("\n");
+
+        const fullDescription =
+          `${task.description || ""}\n\n` +
+          (acceptanceCriteriaMarkdown
+            ? `**Acceptance Criteria:**\n${acceptanceCriteriaMarkdown}`
+            : "");
+
+        return {
+          ref: index + 1,
+          subject: task.title || "Untitled Story",
+          description: fullDescription,
+          status: "New",
+          owner: exportOwner.email,
+          assigned_to: null,
+          created_date: task.created_at || nowISO,
+          modified_date: nowISO,
+          finish_date: null,
+          is_closed: false,
+          is_blocked: false,
+          blocked_note: "",
+          backlog_order: Date.now() + index,
+          sprint_order: index + 1,
+          kanban_order: Date.now() + index,
+          version: 1,
+          watchers: [],
+          tags: task.tags || [],
+          role_points: [
+            {
+              role: "Developer",
+              points: task.storyPoints || task.story_points || "?",
+            },
+          ],
+          history: [
+            {
+              user: [exportOwner.email, exportOwner.name],
+              created_at: nowISO,
+              type: 2,
+              comment: "Exported from Agile Dashboard",
+              diff: null,
+              snapshot: { subject: task.title, status: "New" },
+            },
+          ],
+        };
+      });
+
+      const taigaProjectExport = {
+        name: `Sprint Ready Export - ${now.toLocaleDateString()}`,
+        slug: `sprint-ready-export-${Date.now()}`,
+        description:
+          "User stories from the 'Sprint Ready' column, exported from the Agile Dashboard.",
+        created_date: nowISO,
+        modified_date: nowISO,
+        owner: exportOwner.email,
+        watchers: [exportOwner.email],
+        memberships: [
+          {
+            user: exportOwner.email,
+            role: "Product Manager",
+            email: exportOwner.email,
+          },
+        ],
+        us_statuses: userStoryStatuses,
+        points: storyPoints,
+        roles: projectRoles,
+        priorities: [
+          { name: "Low", order: 1, color: "#A8E440" },
+          { name: "Normal", order: 3, color: "#E4CE40" },
+          { name: "High", order: 5, color: "#E47C40" },
+        ],
+        epic_statuses: [],
+        task_statuses: [],
+        issue_statuses: [],
+        issue_types: [],
+        severities: [],
+        swimlanes: [],
+        user_stories: mappedUserStories,
+        epics: [],
+        tasks: [],
+        issues: [],
+        milestones: [],
+        is_private: false,
+        is_backlog_activated: true,
+        is_kanban_activated: true,
+        is_wiki_activated: true,
+        is_issues_activated: true,
+        is_epics_activated: true,
+      };
+
+      const jsonContent = JSON.stringify(taigaProjectExport, null, 2);
+      const blob = new Blob([jsonContent], {
+        type: "application/json;charset=utf-8;",
       });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -307,7 +422,7 @@ const DashboardPage = () => {
       link.setAttribute("href", url);
       link.setAttribute(
         "download",
-        `sprint-ready-ideas-${new Date().toISOString().split("T")[0]}.csv`
+        `taiga-project-export-${now.toISOString().split("T")[0]}.json`
       );
       link.style.visibility = "hidden";
 
@@ -316,12 +431,12 @@ const DashboardPage = () => {
       document.body.removeChild(link);
 
       toastNotify(
-        `Successfully exported ${sprintReadyColumn.tasks.length} ideas`,
+        `Successfully exported ${sprintReadyColumn.tasks.length} stories.`,
         "success"
       );
     } catch (error) {
-      console.error("Failed to export ideas:", error);
-      toastNotify("Failed to export ideas", "error");
+      console.error("Failed to export stories to JSON:", error);
+      toastNotify("An error occurred during the export.", "error");
     }
   };
 
@@ -1489,7 +1604,7 @@ const DashboardPage = () => {
     <div className="flex flex-col h-screen bg-white">
       <Header
         onCreateIdeaClick={handleOpenCreateModal}
-        onExportClick={handleExportClick}
+        onExportClick={handleExportClickJSON}
       />
       <SearchBar
         onFilter={handleFilter}
