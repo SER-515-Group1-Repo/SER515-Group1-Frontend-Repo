@@ -61,30 +61,34 @@ const dummyTeamMembers = [
 
 const FILTER_LS_KEY = "board_filters_v1";
 
-// Helper function to sort tasks by MVP score (reusable)
-// Business value is always 5 by default
+// Helper function to sort tasks by MoSCoW priority (primary) and MVP score (secondary)
+// MoSCoW: Must > Should > Could > Won't ("Must" stories always come first)
+// MVP Score = Business Value (bv) / Story Points (tiebreaker within same MoSCoW priority)
 const sortTasksByMVP = (tasks) => {
   const moscowOrder = { "Must": 4, "Should": 3, "Could": 2, "Won't": 1 };
-  const DEFAULT_BUSINESS_VALUE = 5;
   return [...tasks].sort((a, b) => {
-    // Calculate MVP scores dynamically from current values
-    // Business value is always 5, only check story points
-    const aSP = a.storyPoints ?? a.story_points ?? null;
-    const aHasValidValues = aSP !== null && aSP !== undefined && aSP !== 0;
-    const aScore = (aHasValidValues && aSP > 0) ? DEFAULT_BUSINESS_VALUE / aSP : 0;
-    
-    const bSP = b.storyPoints ?? b.story_points ?? null;
-    const bHasValidValues = bSP !== null && bSP !== undefined && bSP !== 0;
-    const bScore = (bHasValidValues && bSP > 0) ? DEFAULT_BUSINESS_VALUE / bSP : 0;
-    
+    // Get MoSCoW priority scores
     const aMoscow = moscowOrder[a.moscowPriority || a.moscow_priority] || 0;
     const bMoscow = moscowOrder[b.moscowPriority || b.moscow_priority] || 0;
     
-    // Sort by MVP score first (descending), then by MoSCoW priority (descending)
-    if (bScore !== aScore) {
-      return bScore - aScore;
+    // MoSCoW is PRIMARY - "Must" stories always come first
+    if (bMoscow !== aMoscow) {
+      return bMoscow - aMoscow;
     }
-    return bMoscow - aMoscow;
+    
+    // MVP score is SECONDARY (tiebreaker within same MoSCoW priority)
+    // Calculate MVP scores dynamically from current values
+    const aBV = a.bv ?? 0;
+    const aSP = a.storyPoints ?? a.story_points ?? null;
+    const aHasValidValues = aSP !== null && aSP !== undefined && aSP > 0 && aBV > 0;
+    const aScore = aHasValidValues ? aBV / aSP : 0;
+    
+    const bBV = b.bv ?? 0;
+    const bSP = b.storyPoints ?? b.story_points ?? null;
+    const bHasValidValues = bSP !== null && bSP !== undefined && bSP > 0 && bBV > 0;
+    const bScore = bHasValidValues ? bBV / bSP : 0;
+    
+    return bScore - aScore;
   });
 };
 
@@ -265,11 +269,11 @@ const DashboardPage = () => {
       );
 
       // Normalize the response for frontend state
-      // Business value is always 5 by default
-      const businessValue = 5;
+      // Use actual bv field, default to 0 if not set
+      const businessValue = data?.story?.bv ?? 0;
       const storyPoints = data?.story?.storyPoints ?? data?.story?.story_points ?? null;
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
-      const mvpScore = (hasValidValues && storyPoints > 0) 
+      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+      const mvpScore = hasValidValues
         ? businessValue / storyPoints 
         : 0;
       
@@ -283,7 +287,7 @@ const DashboardPage = () => {
           data?.story?.acceptance_criteria ||
           [],
         storyPoints: storyPoints,
-        businessValue: businessValue, // Always 5
+        bv: businessValue,
         moscowPriority: data?.story?.moscowPriority ?? data?.story?.moscow_priority ?? null,
         mvpScore: mvpScore,
       };
@@ -517,17 +521,17 @@ const DashboardPage = () => {
       let updatedTask = response.data.story;
 
       // Normalize story points from backend response
-      // Business value is always 5 by default
-      const businessValue = 5;
+      // Use actual bv field, default to 0 if not set
+      const businessValue = updatedTask.bv ?? 0;
       const storyPoints = (updatedTask.story_points !== undefined && updatedTask.story_points !== null)
         ? updatedTask.story_points
         : (updatedTask.storyPoints !== undefined && updatedTask.storyPoints !== null)
           ? updatedTask.storyPoints
           : null;
       
-      // Calculate MVP score - treat 0 as invalid (same as null)
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
-      const mvpScore = (hasValidValues && storyPoints > 0) 
+      // Calculate MVP score - both bv and story_points must be valid and > 0
+      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+      const mvpScore = hasValidValues
         ? businessValue / storyPoints 
         : 0;
 
@@ -540,7 +544,7 @@ const DashboardPage = () => {
           ? updatedTask.acceptanceCriteria
           : [],
         storyPoints: storyPoints, // Preserve the actual value from backend
-        businessValue: businessValue, // Always 5
+        bv: businessValue,
         moscowPriority: (updatedTask.moscow_priority === null || updatedTask.moscow_priority === undefined || updatedTask.moscow_priority === "") 
           ? null 
           : (updatedTask.moscow_priority ?? updatedTask.moscowPriority ?? null),
@@ -754,17 +758,17 @@ const DashboardPage = () => {
       }
 
       // Normalize story points from backend response
-      // Business value is always 5 by default
-      const businessValue = 5;
+      // Use actual bv field, default to 0 if not set
+      const businessValue = savedTask.bv ?? 0;
       const storyPoints = (savedTask.story_points !== undefined && savedTask.story_points !== null)
         ? savedTask.story_points
         : (savedTask.storyPoints !== undefined && savedTask.storyPoints !== null)
           ? savedTask.storyPoints
           : null;
       
-      // Calculate MVP score - treat 0 as invalid (same as null)
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
-      const mvpScore = (hasValidValues && storyPoints > 0) 
+      // Calculate MVP score - both bv and story_points must be valid and > 0
+      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+      const mvpScore = hasValidValues
         ? businessValue / storyPoints 
         : 0;
 
@@ -777,7 +781,7 @@ const DashboardPage = () => {
           ? savedTask.acceptanceCriteria
           : [],
         storyPoints: storyPoints, // Preserve the actual value from backend
-        businessValue: businessValue, // Always 5
+        bv: businessValue,
         moscowPriority: (savedTask.moscow_priority !== undefined && savedTask.moscow_priority !== null && savedTask.moscow_priority !== "")
           ? savedTask.moscow_priority
           : ((savedTask.moscowPriority !== undefined && savedTask.moscowPriority !== null && savedTask.moscowPriority !== "")
@@ -960,19 +964,18 @@ const DashboardPage = () => {
             return;
           }
 
-          // Calculate MVP score: Business Value (default 5) / Story Points - treat 0 as invalid
-          const businessValue = 5; // Always default to 5
+          // Calculate MVP score: Business Value (from bv field) / Story Points
+          const businessValue = idea.bv ?? 0;
           const storyPoints = idea.storyPoints ?? idea.story_points ?? null;
-          const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints !== 0;
-          if (hasValidValues && storyPoints > 0) {
+          const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+          if (hasValidValues) {
             idea.mvpScore = businessValue / storyPoints;
           } else {
             idea.mvpScore = 0;
           }
           
-          // Normalize businessValue and storyPoints for consistent access
-          idea.businessValue = businessValue; // Always 5
-          idea.business_value = businessValue; // Always 5
+          // Normalize bv and storyPoints for consistent access
+          idea.bv = businessValue;
           idea.storyPoints = storyPoints;
           idea.story_points = storyPoints;
 

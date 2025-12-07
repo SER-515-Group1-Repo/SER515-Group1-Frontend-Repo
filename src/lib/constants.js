@@ -3,6 +3,7 @@ export const nameRegex = /^[A-Za-z\s]+$/;
 export const userNameRegex = /^[A-Za-z0-9]+$/;
 
 export const STATUS_OPTIONS = [
+  "Backlog",
   "Proposed",
   "Needs Refinement",
   "In Refinement",
@@ -12,4 +13,5 @@ export const STATUS_OPTIONS = [
 
 // Fibonacci sequence values for story points (Agile/Scrum industry standard)
 // Values beyond 13 indicate story should be broken down into smaller tasks
-export const STORY_POINTS_OPTIONS = [0, 1, 2, 3, 5, 8, 13, 21];
+// Note: 0 is excluded because a 0-point story means no effort = not a real story
+export const STORY_POINTS_OPTIONS = [1, 2, 3, 5, 8, 13, 21];
