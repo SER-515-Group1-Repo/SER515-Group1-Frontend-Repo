@@ -1,6 +1,10 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { Label } from "@/components/ui/label";
-import { STATUS_OPTIONS, STORY_POINTS_OPTIONS, getVisibleFields } from "../../lib/constants";
+import {
+  STATUS_OPTIONS,
+  STORY_POINTS_OPTIONS,
+  getVisibleFields,
+} from "../../lib/constants";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import TagsDropdown from "@/components/common/TagsDropdown";
@@ -18,7 +22,10 @@ const NewIdeaForm = ({
 
   // Get field visibility based on current status
   const currentStatus = newIdea.status || selectedColumn || "Backlog";
-  const visibleFields = useMemo(() => getVisibleFields(currentStatus), [currentStatus]);
+  const visibleFields = useMemo(
+    () => getVisibleFields(currentStatus),
+    [currentStatus]
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -101,7 +108,9 @@ const NewIdeaForm = ({
   };
 
   const removeRefinementDependency = (index) => {
-    const updated = (newIdea.refinementDependencies || []).filter((_, i) => i !== index);
+    const updated = (newIdea.refinementDependencies || []).filter(
+      (_, i) => i !== index
+    );
     setNewIdea({ ...newIdea, refinementDependencies: updated });
   };
 
@@ -313,56 +322,13 @@ const NewIdeaForm = ({
         </div>
       )}
 
-      {/* Acceptance Criteria - visible from Proposed onwards */}
-      {visibleFields.acceptanceCriteria && (
-        <div className="grid grid-cols-4 items-start gap-4">
-          <Label className="text-right pt-2">Acceptance Criteria</Label>
-          <div className="col-span-3 space-y-2">
-            {(newIdea.acceptanceCriteria || []).map((criteria, index) => (
-              <div key={index} className="flex gap-2 items-center">
-                <span className="text-sm text-muted-foreground w-6">
-                  {index + 1}.
-                </span>
-                <Input
-                  placeholder={`Enter criterion ${index + 1}...`}
-                  value={criteria}
-                  onChange={(e) => updateCriteria(index, e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeCriterion(index)}
-                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addCriterion}
-                disabled={(newIdea.acceptanceCriteria || []).length >= 5}
-              >
-                + Add Criterion
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {(newIdea.acceptanceCriteria || []).length}/5 criteria
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Needs Refinement Fields */}
       {visibleFields.refinementSessionScheduled && (
         <div className="border rounded-lg p-4 space-y-3 bg-blue-50/50">
-          <h4 className="font-medium text-sm text-blue-800">Refinement Checklist</h4>
-          
+          <h4 className="font-medium text-sm text-blue-800">
+            Refinement Checklist
+          </h4>
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="refinementSessionScheduled"
@@ -371,7 +337,10 @@ const NewIdeaForm = ({
                 setNewIdea({ ...newIdea, refinementSessionScheduled: checked })
               }
             />
-            <Label htmlFor="refinementSessionScheduled" className="text-sm font-normal">
+            <Label
+              htmlFor="refinementSessionScheduled"
+              className="text-sm font-normal"
+            >
               Refinement Session Scheduled
             </Label>
           </div>
@@ -472,8 +441,10 @@ const NewIdeaForm = ({
 
       {visibleFields.refinementDependencies && (
         <div className="border rounded-lg p-4 space-y-3 bg-purple-50/50">
-          <h4 className="font-medium text-sm text-purple-800">In Refinement Requirements</h4>
-          
+          <h4 className="font-medium text-sm text-purple-800">
+            In Refinement Requirements
+          </h4>
+
           {/* Refinement Dependencies */}
           <div className="space-y-2">
             <Label className="text-sm">Refinement Dependencies</Label>
@@ -482,7 +453,9 @@ const NewIdeaForm = ({
                 <Input
                   placeholder={`Refinement dependency ${index + 1}...`}
                   value={dep}
-                  onChange={(e) => updateRefinementDependency(index, e.target.value)}
+                  onChange={(e) =>
+                    updateRefinementDependency(index, e.target.value)
+                  }
                   className="flex-1"
                 />
                 <Button
@@ -538,8 +511,10 @@ const NewIdeaForm = ({
       {/* Ready To Commit Fields */}
       {visibleFields.sprintCapacity && (
         <div className="border rounded-lg p-4 space-y-3 bg-green-50/50">
-          <h4 className="font-medium text-sm text-green-800">Sprint Planning</h4>
-          
+          <h4 className="font-medium text-sm text-green-800">
+            Sprint Planning
+          </h4>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="sprintCapacity" className="text-right text-sm">
               Sprint Capacity

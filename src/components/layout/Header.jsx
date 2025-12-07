@@ -30,7 +30,7 @@ export function Header({ onCreateIdeaClick, onExportClick }) {
 
       <div className="flex items-center space-x-4">
         {}
-        <Button onClick={() => onCreateIdeaClick("Proposed")}>
+        <Button onClick={() => onCreateIdeaClick("Backlog")}>
           + Create Idea
         </Button>
         <Button variant="secondary" onClick={() => onExportClick()}>

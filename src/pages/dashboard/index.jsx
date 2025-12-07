@@ -70,29 +70,31 @@ const FILTER_LS_KEY = "board_filters_v1";
 // MoSCoW: Must > Should > Could > Won't ("Must" stories always come first)
 // MVP Score = Business Value (bv) / Story Points (tiebreaker within same MoSCoW priority)
 const sortTasksByMVP = (tasks) => {
-  const moscowOrder = { "Must": 4, "Should": 3, "Could": 2, "Won't": 1 };
+  const moscowOrder = { Must: 4, Should: 3, Could: 2, "Won't": 1 };
   return [...tasks].sort((a, b) => {
     // Get MoSCoW priority scores
     const aMoscow = moscowOrder[a.moscowPriority || a.moscow_priority] || 0;
     const bMoscow = moscowOrder[b.moscowPriority || b.moscow_priority] || 0;
-    
+
     // MoSCoW is PRIMARY - "Must" stories always come first
     if (bMoscow !== aMoscow) {
       return bMoscow - aMoscow;
     }
-    
+
     // MVP score is SECONDARY (tiebreaker within same MoSCoW priority)
     // Calculate MVP scores dynamically from current values
     const aBV = a.bv ?? 0;
     const aSP = a.storyPoints ?? a.story_points ?? null;
-    const aHasValidValues = aSP !== null && aSP !== undefined && aSP > 0 && aBV > 0;
+    const aHasValidValues =
+      aSP !== null && aSP !== undefined && aSP > 0 && aBV > 0;
     const aScore = aHasValidValues ? aBV / aSP : 0;
-    
+
     const bBV = b.bv ?? 0;
     const bSP = b.storyPoints ?? b.story_points ?? null;
-    const bHasValidValues = bSP !== null && bSP !== undefined && bSP > 0 && bBV > 0;
+    const bHasValidValues =
+      bSP !== null && bSP !== undefined && bSP > 0 && bBV > 0;
     const bScore = bHasValidValues ? bBV / bSP : 0;
-    
+
     return bScore - aScore;
   });
 };
@@ -376,7 +378,10 @@ const DashboardPage = () => {
         status: newIdea.status || selectedColumn || "Backlog",
         acceptance_criteria: filteredCriteria,
         story_points:
-          (newIdea.storyPoints !== null && newIdea.storyPoints !== undefined && newIdea.storyPoints !== "" && newIdea.storyPoints !== 0)
+          newIdea.storyPoints !== null &&
+          newIdea.storyPoints !== undefined &&
+          newIdea.storyPoints !== "" &&
+          newIdea.storyPoints !== 0
             ? parseInt(newIdea.storyPoints)
             : null,
         moscow_priority: newIdea.moscowPriority || null,
@@ -409,12 +414,15 @@ const DashboardPage = () => {
       // Normalize the response for frontend state
       // Use actual bv field, default to 0 if not set
       const businessValue = data?.story?.bv ?? 0;
-      const storyPoints = data?.story?.storyPoints ?? data?.story?.story_points ?? null;
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
-      const mvpScore = hasValidValues
-        ? businessValue / storyPoints 
-        : 0;
-      
+      const storyPoints =
+        data?.story?.storyPoints ?? data?.story?.story_points ?? null;
+      const hasValidValues =
+        storyPoints !== null &&
+        storyPoints !== undefined &&
+        storyPoints > 0 &&
+        businessValue > 0;
+      const mvpScore = hasValidValues ? businessValue / storyPoints : 0;
+
       const userTask = {
         ...data?.story,
         id: data?.story?.id
@@ -426,7 +434,8 @@ const DashboardPage = () => {
           [],
         storyPoints: storyPoints,
         bv: businessValue,
-        moscowPriority: data?.story?.moscowPriority ?? data?.story?.moscow_priority ?? null,
+        moscowPriority:
+          data?.story?.moscowPriority ?? data?.story?.moscow_priority ?? null,
         mvpScore: mvpScore,
       };
 
@@ -650,10 +659,34 @@ const DashboardPage = () => {
         status: newStatus,
         assignees: task.assignees || [],
         tags: task.tags || [],
-        acceptance_criteria: task.acceptance_criteria || task.acceptanceCriteria || [],
-        story_points: task.story_points !== undefined ? task.story_points : task.storyPoints,
-        moscow_priority: task.moscow_priority !== undefined ? task.moscow_priority : task.moscowPriority,
+        acceptance_criteria:
+          task.acceptance_criteria || task.acceptanceCriteria || [],
+        story_points:
+          task.story_points !== undefined
+            ? task.story_points
+            : task.storyPoints,
+        moscow_priority:
+          task.moscow_priority !== undefined
+            ? task.moscow_priority
+            : task.moscowPriority,
         activity: task.activity || [],
+        bv: task.bv ?? task.businessValue ?? null,
+        refinement_session_scheduled:
+          task.refinement_session_scheduled ??
+          task.refinementSessionScheduled ??
+          false,
+        groomed: task.groomed ?? false,
+        dependencies: task.dependencies ?? "",
+        session_documented:
+          task.session_documented ?? task.sessionDocumented ?? false,
+        team_approval: task.team_approval ?? task.teamApproval ?? false,
+        po_approval: task.po_approval ?? task.poApproval ?? false,
+        sprint_capacity: task.sprint_capacity ?? task.sprintCapacity ?? null,
+        skills_available:
+          task.skills_available ?? task.skillsAvailable ?? false,
+        team_commits: task.team_commits ?? task.teamCommits ?? false,
+        tasks_identified:
+          task.tasks_identified ?? task.tasksIdentified ?? false,
       };
 
       const response = await apiClient.put(
@@ -672,17 +705,22 @@ const DashboardPage = () => {
       // Normalize story points from backend response
       // Use actual bv field, default to 0 if not set
       const businessValue = updatedTask.bv ?? 0;
-      const storyPoints = (updatedTask.story_points !== undefined && updatedTask.story_points !== null)
-        ? updatedTask.story_points
-        : (updatedTask.storyPoints !== undefined && updatedTask.storyPoints !== null)
+      const storyPoints =
+        updatedTask.story_points !== undefined &&
+        updatedTask.story_points !== null
+          ? updatedTask.story_points
+          : updatedTask.storyPoints !== undefined &&
+            updatedTask.storyPoints !== null
           ? updatedTask.storyPoints
           : null;
-      
+
       // Calculate MVP score - both bv and story_points must be valid and > 0
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
-      const mvpScore = hasValidValues
-        ? businessValue / storyPoints 
-        : 0;
+      const hasValidValues =
+        storyPoints !== null &&
+        storyPoints !== undefined &&
+        storyPoints > 0 &&
+        businessValue > 0;
+      const mvpScore = hasValidValues ? businessValue / storyPoints : 0;
 
       // Ensure camelCase fields for frontend state with proper defaults
       updatedTask = {
@@ -693,11 +731,56 @@ const DashboardPage = () => {
           ? updatedTask.acceptanceCriteria
           : [],
         storyPoints: storyPoints, // Preserve the actual value from backend
+        story_points: storyPoints,
         bv: businessValue,
-        moscowPriority: (updatedTask.moscow_priority === null || updatedTask.moscow_priority === undefined || updatedTask.moscow_priority === "") 
-          ? null 
-          : (updatedTask.moscow_priority ?? updatedTask.moscowPriority ?? null),
+        moscowPriority:
+          updatedTask.moscow_priority === null ||
+          updatedTask.moscow_priority === undefined ||
+          updatedTask.moscow_priority === ""
+            ? null
+            : updatedTask.moscow_priority ?? updatedTask.moscowPriority ?? null,
         mvpScore: mvpScore,
+        // Normalize validation fields for consistent access
+        refinementSessionScheduled:
+          updatedTask.refinementSessionScheduled ??
+          updatedTask.refinement_session_scheduled ??
+          false,
+        refinement_session_scheduled:
+          updatedTask.refinementSessionScheduled ??
+          updatedTask.refinement_session_scheduled ??
+          false,
+        groomed: updatedTask.groomed ?? false,
+        dependencies: updatedTask.dependencies ?? "",
+        sessionDocumented:
+          updatedTask.sessionDocumented ??
+          updatedTask.session_documented ??
+          false,
+        session_documented:
+          updatedTask.sessionDocumented ??
+          updatedTask.session_documented ??
+          false,
+        teamApproval:
+          updatedTask.teamApproval ?? updatedTask.team_approval ?? false,
+        team_approval:
+          updatedTask.teamApproval ?? updatedTask.team_approval ?? false,
+        poApproval: updatedTask.poApproval ?? updatedTask.po_approval ?? false,
+        po_approval: updatedTask.poApproval ?? updatedTask.po_approval ?? false,
+        sprintCapacity:
+          updatedTask.sprintCapacity ?? updatedTask.sprint_capacity ?? null,
+        sprint_capacity:
+          updatedTask.sprintCapacity ?? updatedTask.sprint_capacity ?? null,
+        skillsAvailable:
+          updatedTask.skillsAvailable ?? updatedTask.skills_available ?? false,
+        skills_available:
+          updatedTask.skillsAvailable ?? updatedTask.skills_available ?? false,
+        teamCommits:
+          updatedTask.teamCommits ?? updatedTask.team_commits ?? false,
+        team_commits:
+          updatedTask.teamCommits ?? updatedTask.team_commits ?? false,
+        tasksIdentified:
+          updatedTask.tasksIdentified ?? updatedTask.tasks_identified ?? false,
+        tasks_identified:
+          updatedTask.tasksIdentified ?? updatedTask.tasks_identified ?? false,
       };
 
       // Verify status actually changed
@@ -855,29 +938,65 @@ const DashboardPage = () => {
 
       // Prepare payload with proper field names for backend
       // Explicitly handle null values - don't use || operator which treats null as falsy
-      const storyPointsValue = updatedTask.story_points !== undefined 
-        ? updatedTask.story_points 
-        : (updatedTask.storyPoints !== undefined ? updatedTask.storyPoints : null);
-      
+      const storyPointsValue =
+        updatedTask.story_points !== undefined
+          ? updatedTask.story_points
+          : updatedTask.storyPoints !== undefined
+          ? updatedTask.storyPoints
+          : null;
+
       // Extract moscowPriority - check both camelCase and snake_case, handle empty string
-      const moscowPriorityValue = (updatedTask.moscow_priority !== undefined && updatedTask.moscow_priority !== null && updatedTask.moscow_priority !== "")
-        ? updatedTask.moscow_priority
-        : (updatedTask.moscowPriority !== undefined && updatedTask.moscowPriority !== null && updatedTask.moscowPriority !== "")
+      const moscowPriorityValue =
+        updatedTask.moscow_priority !== undefined &&
+        updatedTask.moscow_priority !== null &&
+        updatedTask.moscow_priority !== ""
+          ? updatedTask.moscow_priority
+          : updatedTask.moscowPriority !== undefined &&
+            updatedTask.moscowPriority !== null &&
+            updatedTask.moscowPriority !== ""
           ? updatedTask.moscowPriority
           : null;
-      
+
       // Build update payload - send only snake_case (backend standard) to avoid duplicates
-      // Business value is not sent - always defaults to 5
       const updatePayload = {
         title: updatedTask.title,
         description: updatedTask.description,
         status: updatedTask.status,
         assignees: updatedTask.assignees || [],
         tags: updatedTask.tags || [],
-        acceptance_criteria: updatedTask.acceptance_criteria || updatedTask.acceptanceCriteria || [],
+        acceptance_criteria:
+          updatedTask.acceptance_criteria ||
+          updatedTask.acceptanceCriteria ||
+          [],
         story_points: storyPointsValue,
         moscow_priority: moscowPriorityValue, // Explicitly set - null if cleared, value if set
         activity: updatedTask.activity || [],
+        // Validation fields for status transitions
+        bv: updatedTask.bv ?? null,
+        // Needs Refinement fields
+        refinement_session_scheduled:
+          updatedTask.refinement_session_scheduled ??
+          updatedTask.refinementSessionScheduled ??
+          false,
+        groomed: updatedTask.groomed ?? false,
+        dependencies: updatedTask.dependencies ?? "",
+        session_documented:
+          updatedTask.session_documented ??
+          updatedTask.sessionDocumented ??
+          false,
+        // In Refinement fields
+        team_approval:
+          updatedTask.team_approval ?? updatedTask.teamApproval ?? false,
+        po_approval: updatedTask.po_approval ?? updatedTask.poApproval ?? false,
+        // Ready To Commit fields
+        sprint_capacity:
+          updatedTask.sprint_capacity ?? updatedTask.sprintCapacity ?? null,
+        skills_available:
+          updatedTask.skills_available ?? updatedTask.skillsAvailable ?? false,
+        team_commits:
+          updatedTask.team_commits ?? updatedTask.teamCommits ?? false,
+        tasks_identified:
+          updatedTask.tasks_identified ?? updatedTask.tasksIdentified ?? false,
       };
 
       const response = await apiClient.put(
@@ -909,17 +1028,21 @@ const DashboardPage = () => {
       // Normalize story points from backend response
       // Use actual bv field, default to 0 if not set
       const businessValue = savedTask.bv ?? 0;
-      const storyPoints = (savedTask.story_points !== undefined && savedTask.story_points !== null)
-        ? savedTask.story_points
-        : (savedTask.storyPoints !== undefined && savedTask.storyPoints !== null)
+      const storyPoints =
+        savedTask.story_points !== undefined && savedTask.story_points !== null
+          ? savedTask.story_points
+          : savedTask.storyPoints !== undefined &&
+            savedTask.storyPoints !== null
           ? savedTask.storyPoints
           : null;
-      
+
       // Calculate MVP score - both bv and story_points must be valid and > 0
-      const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
-      const mvpScore = hasValidValues
-        ? businessValue / storyPoints 
-        : 0;
+      const hasValidValues =
+        storyPoints !== null &&
+        storyPoints !== undefined &&
+        storyPoints > 0 &&
+        businessValue > 0;
+      const mvpScore = hasValidValues ? businessValue / storyPoints : 0;
 
       // Ensure camelCase fields for frontend state with proper defaults
       savedTask = {
@@ -930,13 +1053,54 @@ const DashboardPage = () => {
           ? savedTask.acceptanceCriteria
           : [],
         storyPoints: storyPoints, // Preserve the actual value from backend
+        story_points: storyPoints,
         bv: businessValue,
-        moscowPriority: (savedTask.moscow_priority !== undefined && savedTask.moscow_priority !== null && savedTask.moscow_priority !== "")
-          ? savedTask.moscow_priority
-          : ((savedTask.moscowPriority !== undefined && savedTask.moscowPriority !== null && savedTask.moscowPriority !== "")
-              ? savedTask.moscowPriority
-              : null),
+        moscowPriority:
+          savedTask.moscow_priority !== undefined &&
+          savedTask.moscow_priority !== null &&
+          savedTask.moscow_priority !== ""
+            ? savedTask.moscow_priority
+            : savedTask.moscowPriority !== undefined &&
+              savedTask.moscowPriority !== null &&
+              savedTask.moscowPriority !== ""
+            ? savedTask.moscowPriority
+            : null,
         mvpScore: mvpScore,
+        // Normalize validation fields for consistent access
+        refinementSessionScheduled:
+          savedTask.refinementSessionScheduled ??
+          savedTask.refinement_session_scheduled ??
+          false,
+        refinement_session_scheduled:
+          savedTask.refinementSessionScheduled ??
+          savedTask.refinement_session_scheduled ??
+          false,
+        groomed: savedTask.groomed ?? false,
+        dependencies: savedTask.dependencies ?? "",
+        sessionDocumented:
+          savedTask.sessionDocumented ?? savedTask.session_documented ?? false,
+        session_documented:
+          savedTask.sessionDocumented ?? savedTask.session_documented ?? false,
+        teamApproval:
+          savedTask.teamApproval ?? savedTask.team_approval ?? false,
+        team_approval:
+          savedTask.teamApproval ?? savedTask.team_approval ?? false,
+        poApproval: savedTask.poApproval ?? savedTask.po_approval ?? false,
+        po_approval: savedTask.poApproval ?? savedTask.po_approval ?? false,
+        sprintCapacity:
+          savedTask.sprintCapacity ?? savedTask.sprint_capacity ?? null,
+        sprint_capacity:
+          savedTask.sprintCapacity ?? savedTask.sprint_capacity ?? null,
+        skillsAvailable:
+          savedTask.skillsAvailable ?? savedTask.skills_available ?? false,
+        skills_available:
+          savedTask.skillsAvailable ?? savedTask.skills_available ?? false,
+        teamCommits: savedTask.teamCommits ?? savedTask.team_commits ?? false,
+        team_commits: savedTask.teamCommits ?? savedTask.team_commits ?? false,
+        tasksIdentified:
+          savedTask.tasksIdentified ?? savedTask.tasks_identified ?? false,
+        tasks_identified:
+          savedTask.tasksIdentified ?? savedTask.tasks_identified ?? false,
       };
 
       // Check if status changed - compare ORIGINAL status from selectedTask with NEW status from backend
@@ -1117,24 +1281,64 @@ const DashboardPage = () => {
           // Calculate MVP score: Business Value (from bv field) / Story Points
           const businessValue = idea.bv ?? 0;
           const storyPoints = idea.storyPoints ?? idea.story_points ?? null;
-          const hasValidValues = storyPoints !== null && storyPoints !== undefined && storyPoints > 0 && businessValue > 0;
+          const hasValidValues =
+            storyPoints !== null &&
+            storyPoints !== undefined &&
+            storyPoints > 0 &&
+            businessValue > 0;
           if (hasValidValues) {
             idea.mvpScore = businessValue / storyPoints;
           } else {
             idea.mvpScore = 0;
           }
-          
+
           // Normalize bv and storyPoints for consistent access
           idea.bv = businessValue;
           idea.storyPoints = storyPoints;
           idea.story_points = storyPoints;
 
           // Normalize moscowPriority - ensure null/empty string is treated as null
-          const moscowPriorityValue = idea.moscowPriority ?? idea.moscow_priority ?? null;
-          idea.moscowPriority = (moscowPriorityValue === null || moscowPriorityValue === undefined || moscowPriorityValue === "") 
-            ? null 
-            : moscowPriorityValue;
+          const moscowPriorityValue =
+            idea.moscowPriority ?? idea.moscow_priority ?? null;
+          idea.moscowPriority =
+            moscowPriorityValue === null ||
+            moscowPriorityValue === undefined ||
+            moscowPriorityValue === ""
+              ? null
+              : moscowPriorityValue;
           idea.moscow_priority = idea.moscowPriority;
+
+          // Normalize all validation fields for consistent access (both camelCase and snake_case)
+          // Needs Refinement fields
+          idea.refinementSessionScheduled =
+            idea.refinementSessionScheduled ??
+            idea.refinement_session_scheduled ??
+            false;
+          idea.refinement_session_scheduled = idea.refinementSessionScheduled;
+          idea.groomed = idea.groomed ?? false;
+          idea.dependencies = idea.dependencies ?? "";
+          idea.sessionDocumented =
+            idea.sessionDocumented ?? idea.session_documented ?? false;
+          idea.session_documented = idea.sessionDocumented;
+
+          // In Refinement fields
+          idea.teamApproval = idea.teamApproval ?? idea.team_approval ?? false;
+          idea.team_approval = idea.teamApproval;
+          idea.poApproval = idea.poApproval ?? idea.po_approval ?? false;
+          idea.po_approval = idea.poApproval;
+
+          // Ready To Commit fields (Sprint Planning)
+          idea.sprintCapacity =
+            idea.sprintCapacity ?? idea.sprint_capacity ?? null;
+          idea.sprint_capacity = idea.sprintCapacity;
+          idea.skillsAvailable =
+            idea.skillsAvailable ?? idea.skills_available ?? false;
+          idea.skills_available = idea.skillsAvailable;
+          idea.teamCommits = idea.teamCommits ?? idea.team_commits ?? false;
+          idea.team_commits = idea.teamCommits;
+          idea.tasksIdentified =
+            idea.tasksIdentified ?? idea.tasks_identified ?? false;
+          idea.tasks_identified = idea.tasksIdentified;
 
           const column = newBoard.find((col) => col.title === idea.status);
           if (column) {

@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { X, Send, ChevronDown } from "lucide-react";
 import TagsDropdown from "@/components/common/TagsDropdown";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  STATUS_OPTIONS, 
+import {
+  STATUS_OPTIONS,
   STORY_POINTS_OPTIONS,
-  getVisibleFields
+  getVisibleFields,
 } from "../../lib/constants";
 
 const EditStoryForm = ({ story, onSave, teamMembers }) => {
@@ -42,7 +42,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const assigneeRef = useRef(null);
 
   // Get field visibility based on current status
-  const visibleFields = useMemo(() => getVisibleFields(formData.status), [formData.status]);
+  const visibleFields = useMemo(
+    () => getVisibleFields(formData.status),
+    [formData.status]
+  );
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -61,60 +64,90 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       // Parse tags - could be string, array, or empty
       let parsedTags = [];
       if (story.tags) {
-        if (typeof story.tags === 'string') {
-          parsedTags = story.tags.split(',').map(tag => tag.trim()).filter(tag => tag);
+        if (typeof story.tags === "string") {
+          parsedTags = story.tags
+            .split(",")
+            .map((tag) => tag.trim())
+            .filter((tag) => tag);
         } else if (Array.isArray(story.tags)) {
           parsedTags = story.tags;
         }
       }
-      
+
       // Parse assignees - could be string, array, or empty
       let parsedAssignees = [];
       if (story.assignees) {
         if (Array.isArray(story.assignees)) {
           parsedAssignees = story.assignees;
-        } else if (typeof story.assignees === 'string') {
-          parsedAssignees = story.assignees.split(',').map(a => a.trim()).filter(a => a);
+        } else if (typeof story.assignees === "string") {
+          parsedAssignees = story.assignees
+            .split(",")
+            .map((a) => a.trim())
+            .filter((a) => a);
         }
       }
-      
+
       // Handle moscowPriority - check for null/undefined/empty string explicitly
-      const moscowPriorityValue = story.moscowPriority ?? story.moscow_priority ?? null;
-      const moscowPriority = (moscowPriorityValue === null || moscowPriorityValue === undefined || moscowPriorityValue === "") ? "" : moscowPriorityValue;
-      
+      const moscowPriorityValue =
+        story.moscowPriority ?? story.moscow_priority ?? null;
+      const moscowPriority =
+        moscowPriorityValue === null ||
+        moscowPriorityValue === undefined ||
+        moscowPriorityValue === ""
+          ? ""
+          : moscowPriorityValue;
+
       // Handle story points - convert null/undefined/0 to empty string for form display
       const storyPointsValue = story.storyPoints ?? story.story_points ?? null;
-      const storyPointsFormValue = (storyPointsValue === null || storyPointsValue === undefined || storyPointsValue === 0) ? "" : storyPointsValue;
+      const storyPointsFormValue =
+        storyPointsValue === null ||
+        storyPointsValue === undefined ||
+        storyPointsValue === 0
+          ? ""
+          : storyPointsValue;
 
       const currentStatus = story.status || "";
-      
+
       setFormData({
         title: story.title || "",
         description: story.description || "",
         status: currentStatus,
-        acceptanceCriteria: Array.isArray(story.acceptanceCriteria) ? story.acceptanceCriteria : [],
+        acceptanceCriteria: Array.isArray(story.acceptanceCriteria)
+          ? story.acceptanceCriteria
+          : [],
         storyPoints: storyPointsFormValue,
         moscowPriority: moscowPriority,
         assignees: parsedAssignees,
         tags: parsedTags,
         // New validation fields - use camelCase from story or snake_case fallback
         bv: story.bv ?? null,
-        refinementSessionScheduled: story.refinementSessionScheduled ?? story.refinement_session_scheduled ?? false,
+        refinementSessionScheduled:
+          story.refinementSessionScheduled ??
+          story.refinement_session_scheduled ??
+          false,
         groomed: story.groomed ?? false,
         dependencies: story.dependencies ?? [],
-        sessionDocumented: story.sessionDocumented ?? story.session_documented ?? false,
-        refinementDependencies: story.refinementDependencies ?? story.refinement_dependencies ?? [],
+        sessionDocumented:
+          story.sessionDocumented ?? story.session_documented ?? false,
+        refinementDependencies:
+          story.refinementDependencies ?? story.refinement_dependencies ?? [],
         teamApproval: story.teamApproval ?? story.team_approval ?? false,
         poApproval: story.poApproval ?? story.po_approval ?? false,
         sprintCapacity: story.sprintCapacity ?? story.sprint_capacity ?? null,
-        skillsAvailable: story.skillsAvailable ?? story.skills_available ?? false,
+        skillsAvailable:
+          story.skillsAvailable ?? story.skills_available ?? false,
         teamCommits: story.teamCommits ?? story.team_commits ?? false,
-        tasksIdentified: story.tasksIdentified ?? story.tasks_identified ?? false,
+        tasksIdentified:
+          story.tasksIdentified ?? story.tasks_identified ?? false,
       });
       if (story.activity && Array.isArray(story.activity)) {
         const formattedActivity = story.activity.map((item) => {
           if (typeof item === "string") {
-            return { text: item, timestamp: new Date().toLocaleString(), isFromBackend: true };
+            return {
+              text: item,
+              timestamp: new Date().toLocaleString(),
+              isFromBackend: true,
+            };
           }
           if (item.action) {
             return {
@@ -130,9 +163,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         setActivity([]);
       }
     }
-  }, [story?.id]); // Only re-initialize when story ID changes, not when story properties update
+  }, [story?.id]);
 
-  // Acceptance Criteria functions
   const updateCriteria = (index, value) => {
     const updated = [...formData.acceptanceCriteria];
     updated[index] = value;
@@ -199,7 +231,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   };
 
   const removeRefinementDependency = (index) => {
-    const updated = (formData.refinementDependencies || []).filter((_, i) => i !== index);
+    const updated = (formData.refinementDependencies || []).filter(
+      (_, i) => i !== index
+    );
     setFormData({ ...formData, refinementDependencies: updated });
   };
 
@@ -232,37 +266,37 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     if (!isFormValid) return;
-    
-    // If there's an unsent comment in the textarea, add it to activity before saving
+
     let finalActivity = [...activity];
     if (newComment.trim()) {
       const timestamp = new Date().toLocaleString();
       finalActivity.push({ text: newComment.trim(), timestamp });
     }
-    
-    // Get only NEW user-added comments (items without isFromBackend flag)
-    const newComments = finalActivity.filter((item) => item.text && !item.isFromBackend);
-    
-    // Handle moscowPriority - convert empty string to null, preserve actual values
-    const moscowPriorityValue = (formData.moscowPriority !== null && 
-                                 formData.moscowPriority !== undefined && 
-                                 formData.moscowPriority !== "" && 
-                                 formData.moscowPriority.trim() !== "") 
-      ? formData.moscowPriority.trim() 
-      : null;
-    
-    // Handle story points - convert empty string, 0, or null to null
-    // Empty string means user cleared the field
-    // Business value is always 5 by default, not sent to backend
-    const storyPointsValue = (formData.storyPoints === null || formData.storyPoints === undefined || formData.storyPoints === "" || formData.storyPoints === 0)
-      ? null
-      : (typeof formData.storyPoints === 'string' ? parseInt(formData.storyPoints) : formData.storyPoints);
-    
-    // Build submit data - send only snake_case (backend standard) to avoid duplicates
-    // Don't spread story/formData to avoid duplicate fields
-    // Include id from story so handleSaveEdit can use it
+
+    const newComments = finalActivity.filter(
+      (item) => item.text && !item.isFromBackend
+    );
+
+    const moscowPriorityValue =
+      formData.moscowPriority !== null &&
+      formData.moscowPriority !== undefined &&
+      formData.moscowPriority !== "" &&
+      formData.moscowPriority.trim() !== ""
+        ? formData.moscowPriority.trim()
+        : null;
+
+    const storyPointsValue =
+      formData.storyPoints === null ||
+      formData.storyPoints === undefined ||
+      formData.storyPoints === "" ||
+      formData.storyPoints === 0
+        ? null
+        : typeof formData.storyPoints === "string"
+        ? parseInt(formData.storyPoints)
+        : formData.storyPoints;
+
     const submitData = {
       id: story.id, // Include id so backend knows which story to update
       title: formData.title,
@@ -273,16 +307,21 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       acceptance_criteria: formData.acceptanceCriteria.filter((c) => c.trim()),
       story_points: storyPointsValue,
       moscow_priority: moscowPriorityValue,
-      // Validation fields - snake_case for backend
-      bv: formData.bv !== null && formData.bv !== "" ? parseInt(formData.bv) : null,
-      refinement_session_scheduled: formData.refinementSessionScheduled || false,
+      bv:
+        formData.bv !== null && formData.bv !== ""
+          ? parseInt(formData.bv)
+          : null,
+      refinement_session_scheduled:
+        formData.refinementSessionScheduled || false,
       groomed: formData.groomed || false,
       session_documented: formData.sessionDocumented || false,
       dependencies: (formData.dependencies || []).filter((d) => d && d.trim()),
       team_approval: formData.teamApproval || false,
       po_approval: formData.poApproval || false,
-      sprint_capacity: formData.sprintCapacity !== null && formData.sprintCapacity !== "" 
-        ? parseInt(formData.sprintCapacity) : null,
+      sprint_capacity:
+        formData.sprintCapacity !== null && formData.sprintCapacity !== ""
+          ? parseInt(formData.sprintCapacity)
+          : null,
       skills_available: formData.skillsAvailable || false,
       team_commits: formData.teamCommits || false,
       tasks_identified: formData.tasksIdentified || false,
@@ -332,7 +371,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         <div className="col-span-3 space-y-2">
           {formData.acceptanceCriteria.map((criteria, index) => (
             <div key={index} className="flex gap-2 items-center">
-              <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
+              <span className="text-sm text-muted-foreground w-6">
+                {index + 1}.
+              </span>
               <Input
                 placeholder={`Enter criterion ${index + 1}...`}
                 value={criteria}
@@ -376,12 +417,16 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           <select
             id="edit-story-points"
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
+            value={
+              formData.storyPoints === null || formData.storyPoints === ""
+                ? ""
+                : formData.storyPoints
+            }
             onChange={(e) => {
               const val = e.target.value;
-              setFormData({ 
-                ...formData, 
-                storyPoints: val === "" ? "" : parseInt(val) 
+              setFormData({
+                ...formData,
+                storyPoints: val === "" ? "" : parseInt(val),
               });
             }}
           >
@@ -392,7 +437,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
               </option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground mt-1">Fibonacci sequence values</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Fibonacci sequence values
+          </p>
         </div>
       </div>
 
@@ -405,7 +452,12 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           <select
             id="edit-moscow-priority"
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            value={formData.moscowPriority === null || formData.moscowPriority === undefined ? "" : formData.moscowPriority}
+            value={
+              formData.moscowPriority === null ||
+              formData.moscowPriority === undefined
+                ? ""
+                : formData.moscowPriority
+            }
             onChange={(e) => {
               const val = e.target.value;
               setFormData({
@@ -436,7 +488,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             id="edit-status"
             className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             value={formData.status}
-            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, status: e.target.value })
+            }
           >
             <option value="">Select a status</option>
             {STATUS_OPTIONS.map((status) => (
@@ -481,63 +535,28 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         </div>
       )}
 
-      {/* Acceptance Criteria - visible from Proposed onwards */}
-      {visibleFields.acceptanceCriteria && (
-        <div className="grid grid-cols-4 items-start gap-4">
-          <Label className="text-right pt-2">Acceptance Criteria</Label>
-          <div className="col-span-3 space-y-2">
-            {formData.acceptanceCriteria.map((criteria, index) => (
-              <div key={index} className="flex gap-2 items-center">
-                <span className="text-sm text-muted-foreground w-6">{index + 1}.</span>
-                <Input
-                  placeholder={`Enter criterion ${index + 1}...`}
-                  value={criteria}
-                  onChange={(e) => updateCriteria(index, e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => removeCriterion(index)}
-                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between pt-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addCriterion}
-                disabled={formData.acceptanceCriteria.length >= 5}
-              >
-                + Add Criterion
-              </Button>
-              <span className="text-xs text-muted-foreground">
-                {formData.acceptanceCriteria.length}/5 criteria
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Needs Refinement Fields */}
       {visibleFields.refinementSessionScheduled && (
         <div className="border rounded-lg p-4 space-y-3 bg-blue-50/50">
-          <h4 className="font-medium text-sm text-blue-800">Refinement Checklist</h4>
-          
+          <h4 className="font-medium text-sm text-blue-800">
+            Refinement Checklist
+          </h4>
+
           <div className="flex items-center space-x-2">
             <Checkbox
               id="edit-refinementSessionScheduled"
               checked={formData.refinementSessionScheduled || false}
               onCheckedChange={(checked) =>
-                setFormData({ ...formData, refinementSessionScheduled: checked })
+                setFormData({
+                  ...formData,
+                  refinementSessionScheduled: checked,
+                })
               }
             />
-            <Label htmlFor="edit-refinementSessionScheduled" className="text-sm font-normal">
+            <Label
+              htmlFor="edit-refinementSessionScheduled"
+              className="text-sm font-normal"
+            >
               Refinement Session Scheduled
             </Label>
           </div>
@@ -563,7 +582,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                 setFormData({ ...formData, sessionDocumented: checked })
               }
             />
-            <Label htmlFor="edit-sessionDocumented" className="text-sm font-normal">
+            <Label
+              htmlFor="edit-sessionDocumented"
+              className="text-sm font-normal"
+            >
               Session Documented
             </Label>
           </div>
@@ -603,44 +625,13 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         </div>
       )}
 
-      {/* Story Points - visible from In Refinement onwards */}
-      {visibleFields.storyPoints && (
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="edit-story-points" className="text-right">
-            Story Points
-          </Label>
-          <div className="col-span-3">
-            <select
-              id="edit-story-points"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={formData.storyPoints === null || formData.storyPoints === "" ? "" : formData.storyPoints}
-              onChange={(e) => {
-                const val = e.target.value;
-                setFormData({ 
-                  ...formData, 
-                  storyPoints: val === "" ? "" : parseInt(val) 
-                });
-              }}
-            >
-              <option value="">Select story points...</option>
-              {STORY_POINTS_OPTIONS.map((points) => (
-                <option key={points} value={points}>
-                  {points}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Fibonacci sequence values - Required for Ready To Commit
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* In Refinement Fields */}
       {visibleFields.refinementDependencies && (
         <div className="border rounded-lg p-4 space-y-3 bg-purple-50/50">
-          <h4 className="font-medium text-sm text-purple-800">In Refinement Requirements</h4>
-          
+          <h4 className="font-medium text-sm text-purple-800">
+            In Refinement Requirements
+          </h4>
+
           {/* Refinement Dependencies */}
           <div className="space-y-2">
             <Label className="text-sm">Refinement Dependencies</Label>
@@ -649,7 +640,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                 <Input
                   placeholder={`Refinement dependency ${index + 1}...`}
                   value={dep}
-                  onChange={(e) => updateRefinementDependency(index, e.target.value)}
+                  onChange={(e) =>
+                    updateRefinementDependency(index, e.target.value)
+                  }
                   className="flex-1"
                 />
                 <Button
@@ -705,8 +698,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       {/* Ready To Commit Fields */}
       {visibleFields.sprintCapacity && (
         <div className="border rounded-lg p-4 space-y-3 bg-green-50/50">
-          <h4 className="font-medium text-sm text-green-800">Sprint Planning</h4>
-          
+          <h4 className="font-medium text-sm text-green-800">
+            Sprint Planning
+          </h4>
+
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="edit-sprintCapacity" className="text-right text-sm">
               Sprint Capacity
@@ -737,7 +732,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                 setFormData({ ...formData, skillsAvailable: checked })
               }
             />
-            <Label htmlFor="edit-skillsAvailable" className="text-sm font-normal">
+            <Label
+              htmlFor="edit-skillsAvailable"
+              className="text-sm font-normal"
+            >
               Skills Available in Team
             </Label>
           </div>
@@ -763,7 +761,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                 setFormData({ ...formData, tasksIdentified: checked })
               }
             />
-            <Label htmlFor="edit-tasksIdentified" className="text-sm font-normal">
+            <Label
+              htmlFor="edit-tasksIdentified"
+              className="text-sm font-normal"
+            >
               Tasks Identified
             </Label>
           </div>
@@ -780,7 +781,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           >
             <div className="flex flex-wrap gap-1 flex-1">
               {(formData.assignees || []).length === 0 ? (
-                <span className="text-muted-foreground">Select assignees...</span>
+                <span className="text-muted-foreground">
+                  Select assignees...
+                </span>
               ) : (
                 (formData.assignees || []).map((name) => (
                   <span
@@ -890,7 +893,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
       {/* Submit Button */}
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="submit" disabled={!isFormValid}>Save Changes</Button>
+        <Button type="submit" disabled={!isFormValid}>
+          Save Changes
+        </Button>
       </div>
     </form>
   );
