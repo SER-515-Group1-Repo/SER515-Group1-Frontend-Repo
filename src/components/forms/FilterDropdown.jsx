@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { STATUS_OPTIONS } from "../../lib/constants";
 
-const ALL_ASSIGNEE = ["Akshat", "Balaji", "Charith", "Rahul", "Vishesh"];
+const ALL_ASSIGNEES = ["Akshat", "Balaji", "Charith", "Rahul", "Vishesh"];
 const ALL_TAGS = [
   "Frontend",
   "Backend",
@@ -27,7 +27,7 @@ export function applyFilters(columns = [], filters) {
     const t = (task.title || "").toLowerCase();
     const d = (task.description || "").toLowerCase();
     const taskTags = Array.isArray(task.tags) ? task.tags : [];
-    const taskAssignee = task.assignee ?? task.assigne ?? "";
+    const taskAssignees = Array.isArray(task.assignees) ? task.assignees : [];
 
     const rawDate =
       task.created_at ||
@@ -40,7 +40,7 @@ export function applyFilters(columns = [], filters) {
     const taskDate = rawDate ? new Date(rawDate) : null;
 
     if (query && !(t.includes(query) || d.includes(query))) return false;
-    if (assignees?.size && !assignees.has(String(taskAssignee))) return false;
+    if (assignees?.size && !taskAssignees.some((a) => assignees.has(String(a)))) return false;
     if (tags?.size && !taskTags.some((tg) => tags.has(tg))) return false;
 
     if ((start || end) && !taskDate) return false;
@@ -113,9 +113,9 @@ export default function NewFilterDropdown({ value = null, onApply }) {
 
   const summary = useMemo(() => {
     const parts = [];
-    if (text) parts.push(`“${text}”`);
+    if (text) parts.push(`"${text}"`);
     if (statuses.size) parts.push(`${statuses.size} status`);
-    if (assignees.size) parts.push(`${assignees.size} assignee`);
+    if (assignees.size) parts.push(`${assignees.size} assignees`);
     if (tags.size) parts.push(`${tags.size} tag`);
     if (startDate || endDate)
       parts.push(
@@ -209,10 +209,10 @@ export default function NewFilterDropdown({ value = null, onApply }) {
           {/* Assignees */}
           <div className="mb-4">
             <div className="mb-2 text-xs font-semibold text-gray-500">
-              Assignee
+              Assignees
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {ALL_ASSIGNEE.map((s) => (
+              {ALL_ASSIGNEES.map((s) => (
                 <label
                   key={s}
                   className="flex cursor-pointer items-center gap-1 rounded-xl border p-2 hover:bg-gray-100"
@@ -250,7 +250,7 @@ export default function NewFilterDropdown({ value = null, onApply }) {
             </div>
           </div>
 
-          {/* Date Range */}
+          {/* Date Range - Commented out
           <div className="mb-4">
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
@@ -273,6 +273,7 @@ export default function NewFilterDropdown({ value = null, onApply }) {
               </div>
             </div>
           </div>
+          */}
 
           {/* Actions */}
           <div className="flex items-center justify-between border-t pt-3">

@@ -47,6 +47,12 @@ const NewIdeaForm = ({
       alert("Maximum 5 acceptance criteria allowed");
       return;
     }
+    // Check if there's an empty criterion already
+    const hasEmptyCriterion = currentCriteria.some(c => !c || c.trim() === "");
+    if (hasEmptyCriterion) {
+      alert("Please fill in the existing empty criterion before adding a new one.");
+      return;
+    }
     setNewIdea({
       ...newIdea,
       acceptanceCriteria: [...currentCriteria, ""],
@@ -222,29 +228,27 @@ const NewIdeaForm = ({
             Story Points
           </Label>
           <div className="col-span-3">
-            <Input
+            <select
               id="story-points"
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              placeholder="e.g., 8 (0-100)"
+              className={`h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errorState.storyPoints ? "border-red-500" : ""}`}
               value={newIdea.storyPoints ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === "" || val === null) {
-                  setNewIdea({ ...newIdea, storyPoints: null });
-                } else {
-                  const num = parseInt(val);
-                  if (!isNaN(num) && num >= 0 && num <= 100) {
-                    setNewIdea({ ...newIdea, storyPoints: num });
-                  }
-                }
+                setNewIdea({
+                  ...newIdea,
+                  storyPoints: val === "" ? null : parseInt(val),
+                });
               }}
-              className={errorState.storyPoints ? "border-red-500" : ""}
-            />
+            >
+              <option value="">Select story points...</option>
+              {STORY_POINTS_OPTIONS.map((points) => (
+                <option key={points} value={points}>
+                  {points}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-muted-foreground mt-1">
-              Valid range: 0-100
+              Fibonacci sequence: 1, 2, 3, 5, 8, 13, 21
             </p>
             {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
           </div>
@@ -312,7 +316,7 @@ const NewIdeaForm = ({
               min="1"
               max="100"
               placeholder="Enter business value (1-100)"
-              value={newIdea.bv ?? ""}
+              value={newIdea.bv === 0 || newIdea.bv === null || newIdea.bv === undefined ? "" : newIdea.bv}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === "" || val === null) {
@@ -414,39 +418,6 @@ const NewIdeaForm = ({
             >
               + Add Dependency
             </Button>
-          </div>
-        </div>
-      )}
-
-      {/* In Refinement Fields */}
-      {visibleFields.storyPoints && (
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="story-points" className="text-right">
-            Story Points
-          </Label>
-          <div className="col-span-3">
-            <select
-              id="story-points"
-              className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={newIdea.storyPoints ?? ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                setNewIdea({
-                  ...newIdea,
-                  storyPoints: val === "" ? null : parseInt(val),
-                });
-              }}
-            >
-              <option value="">Select story points...</option>
-              {STORY_POINTS_OPTIONS.map((points) => (
-                <option key={points} value={points}>
-                  {points}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground mt-1">
-              Fibonacci sequence values - Required for Ready To Commit
-            </p>
           </div>
         </div>
       )}
@@ -641,21 +612,27 @@ const NewIdeaForm = ({
                   No team members available
                 </div>
               ) : (
-                teamMembers.map((member, index) => (
-                  <div
-                    key={`${member.id}-${index}`}
-                    onClick={() => toggleAssignee(member.name)}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAssignees.includes(member.name)}
-                      onChange={() => {}}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm">{member.name}</span>
-                  </div>
-                ))
+                teamMembers.map((member, index) => {
+                  const isAssigned = selectedAssignees.includes(member.name);
+                  return (
+                    <div
+                      key={`${member.id}-${index}`}
+                      onClick={() => toggleAssignee(member.name)}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer ${isAssigned ? 'bg-primary/5' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAssigned}
+                        onChange={() => {}}
+                        className="h-4 w-4"
+                      />
+                      <span className={`text-sm ${isAssigned ? 'font-medium text-primary' : ''}`}>
+                        {member.name}
+                        {isAssigned && <span className="ml-1 text-xs text-green-600">(assigned)</span>}
+                      </span>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}

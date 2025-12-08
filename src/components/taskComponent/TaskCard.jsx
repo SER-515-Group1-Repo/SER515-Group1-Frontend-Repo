@@ -10,6 +10,7 @@ import {
   Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getVisibleFields } from "@/lib/constants";
 
 export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPreview, isOperationInProgress = false }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -165,13 +166,19 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
         </div>
       )}
 
-      {/* Story Points Section */}
-{task?.storyPoints && (
-  <div className="flex items-center gap-1.5 bg-cyan-50 px-2.5 py-1 rounded-md text-xs w-fit border border-cyan-200 shadow-sm">
-    <span className="text-cyan-700 font-semibold">{task.storyPoints}</span>
-    <span className="text-cyan-600">points</span>
-  </div>
-)}
+      {/* Story Points Section - only show for Ready To Commit and Sprint Ready */}
+{(() => {
+  const visibleFields = getVisibleFields(task?.status);
+  if (visibleFields.storyPoints && task?.storyPoints) {
+    return (
+      <div className="flex items-center gap-1.5 bg-cyan-50 px-2.5 py-1 rounded-md text-xs w-fit border border-cyan-200 shadow-sm">
+        <span className="text-cyan-700 font-semibold">{task.storyPoints}</span>
+        <span className="text-cyan-600">points</span>
+      </div>
+    );
+  }
+  return null;
+})()}
 
       {/* Tags Section */}
       {parsedTags.length > 0 && (
@@ -190,8 +197,12 @@ export function TaskCard({ task, onEdit, onAssign, onDelete, onMoveToTop, onPrev
 
       {/* MVP Badge and MoSCoW Priority Badge */}
       <div className="flex flex-wrap gap-1 pt-1">
-        {/* MVP Badge - Show when MVP Score >= 1.0 */}
+        {/* MVP Badge - Show when MVP Score >= 1.0 AND storyPoints field is visible (Ready To Commit, Sprint Ready) */}
         {(() => {
+          const visibleFields = getVisibleFields(task?.status);
+          // Only show MVP badge when storyPoints are visible (Ready To Commit, Sprint Ready)
+          if (!visibleFields.storyPoints) return null;
+          
           // Use actual bv field, default to 0 if not set
           const businessValue = task.bv ?? 0;
           const storyPoints = task.storyPoints ?? task.story_points ?? null;

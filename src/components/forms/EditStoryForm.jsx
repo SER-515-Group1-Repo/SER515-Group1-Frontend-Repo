@@ -125,7 +125,8 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         assignees: parsedAssignees,
         tags: parsedTags,
         // New validation fields - use camelCase from story or snake_case fallback
-        bv: story.bv ?? null,
+        // Treat bv=0 as null since valid range is 1-100
+        bv: story.bv === 0 ? null : (story.bv ?? null),
         refinementSessionScheduled:
           story.refinementSessionScheduled ??
           story.refinement_session_scheduled ??
@@ -179,6 +180,12 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
   const addCriterion = () => {
     if (formData.acceptanceCriteria.length >= 5) {
       alert("Maximum 5 acceptance criteria allowed");
+      return;
+    }
+    // Check if there's an empty criterion already
+    const hasEmptyCriterion = formData.acceptanceCriteria.some(c => !c || c.trim() === "");
+    if (hasEmptyCriterion) {
+      alert("Please fill in the existing empty criterion before adding a new one.");
       return;
     }
     setFormData({
@@ -457,7 +464,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         </div>
       </div>
 
-      {/* Story Points */}
       {/* Story Points - only show if required by FIELD_VISIBILITY for current status */}
       {visibleFields.storyPoints && (
         <div className="grid grid-cols-4 items-center gap-4">
@@ -465,29 +471,27 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             Story Points
           </Label>
           <div className="col-span-3">
-            <Input
+            <select
               id="edit-story-points"
-              type="number"
-              min="0"
-              max="100"
-              step="1"
-              placeholder="e.g., 8 (0-100)"
+              className={`h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errorState.storyPoints ? "border-red-500" : ""}`}
               value={formData.storyPoints ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
-                if (val === "" || val === null) {
-                  setFormData({ ...formData, storyPoints: null });
-                } else {
-                  const num = parseInt(val);
-                  if (!isNaN(num) && num >= 0 && num <= 100) {
-                    setFormData({ ...formData, storyPoints: num });
-                  }
-                }
+                setFormData({
+                  ...formData,
+                  storyPoints: val === "" ? null : parseInt(val),
+                });
               }}
-              className={errorState.storyPoints ? "border-red-500" : ""}
-            />
+            >
+              <option value="">Select story points...</option>
+              {STORY_POINTS_OPTIONS.map((points) => (
+                <option key={points} value={points}>
+                  {points}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-muted-foreground mt-1">
-              Valid range: 0-100
+              Fibonacci sequence: 1, 2, 3, 5, 8, 13, 21
             </p>
             {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
           </div>
@@ -586,39 +590,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           </select>
         </div>
       </div>
-
-      {/* Business Value - visible from Proposed onwards */}
-      {visibleFields.bv && (
-        <div className="grid grid-cols-4 items-center gap-4">
-          <Label htmlFor="edit-bv" className="text-right">
-            Business Value
-          </Label>
-          <div className="col-span-3">
-            <Input
-              id="edit-bv"
-              type="number"
-              min="1"
-              max="100"
-              placeholder="Enter business value (1-100)"
-              value={formData.bv ?? ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "" || val === null) {
-                  setFormData({ ...formData, bv: null });
-                } else {
-                  const num = parseInt(val);
-                  if (!isNaN(num) && num >= 1 && num <= 100) {
-                    setFormData({ ...formData, bv: num });
-                  }
-                }
-              }}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Required to move from Backlog to Proposed
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Needs Refinement Fields */}
       {visibleFields.refinementSessionScheduled && (
@@ -907,21 +878,27 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                   No team members available
                 </div>
               ) : (
-                teamMembers.map((member, index) => (
-                  <div
-                    key={`${member.id}-${index}`}
-                    onClick={() => toggleAssignee(member.name)}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={(formData.assignees || []).includes(member.name)}
-                      onChange={() => {}}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-sm">{member.name}</span>
-                  </div>
-                ))
+                teamMembers.map((member, index) => {
+                  const isAssigned = (formData.assignees || []).includes(member.name);
+                  return (
+                    <div
+                      key={`${member.id}-${index}`}
+                      onClick={() => toggleAssignee(member.name)}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer ${isAssigned ? 'bg-primary/5' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isAssigned}
+                        onChange={() => {}}
+                        className="h-4 w-4"
+                      />
+                      <span className={`text-sm ${isAssigned ? 'font-medium text-primary' : ''}`}>
+                        {member.name}
+                        {isAssigned && <span className="ml-1 text-xs text-green-600">(assigned)</span>}
+                      </span>
+                    </div>
+                  );
+                })
               )}
             </div>
           )}
