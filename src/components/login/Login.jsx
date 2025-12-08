@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Link } from "react-router-dom";
 
 import apiClient from "@/api/axios";
 import { toastNotify } from "@/lib/utils";
@@ -434,8 +435,8 @@ const LoginPage = ({ type }) => {
               </span>
               <p className="mt-2 text-gray-600">
                 New User?{" "}
-                <a
-                  href="/sign-up"
+                <Link
+                  to="/sign-up"
                   className="font-medium text-black hover:text-gray-700 underline"
                   onClick={() => {
                     handleRememberMe(false);
@@ -444,17 +445,17 @@ const LoginPage = ({ type }) => {
                   }}
                 >
                   Sign Up
-                </a>
+                </Link>
               </p>
             </div>
           ) : (
             <div className="mt-20 text-center text-sm">
-              <a
-                href="/login"
+              <Link
+                to="/login"
                 className="font-medium text-gray-600 hover:text-black underline"
               >
                 Existing User?{" "}
-              </a>
+              </Link>
             </div>
           )}
 
