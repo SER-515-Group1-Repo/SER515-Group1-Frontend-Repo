@@ -29,7 +29,7 @@ This repository contains the frontend codebase for the Agile Dashboard. The appl
 ---
 
 ## 🚀 Deployment URL
-**URL:** https://515-group1.vercel.app
+**URL:** [https://ser-515-group1-agile.vercel.app](https://ser-515-group1-agile.vercel.app)
 - First Sign-up with new user then test out our agile requirement tool.
 
 ---
