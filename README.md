@@ -95,29 +95,6 @@ docker-compose up --build
 
 ---
 
-## ☁️ Deploying Frontend to Render
-
-This repository includes a `render.yaml` manifest that configures the project for deployment on Render as a static site.
-
-Key points:
-- The `buildCommand` is `npm ci && npm run build` and the output directory is `dist`.
-- Set `VITE_BASE_URL` (environment variable) in Render to point to your backend URL (e.g., `https://your-backend.onrender.com`) so the frontend API calls work in production.
-- For additional tuning (custom domain, caching, headers), configure those via the Render dashboard.
-
-Detailed steps are available in `RENDER_DEPLOY.md`.
-
-
-- `--build`: This flag tells Docker Compose to build the images for the frontend and backend from their respective `Dockerfiles` before starting the services.
-
-This single command will:
-
-1.  Build the custom Docker images for the frontend and backend.
-2.  Start three containers: the database, the backend API, and the frontend web server.
-3.  Automatically run database migrations.
-4.  Launch the entire application.
-
----
-
 ## 🌐 Accessing the Application
 
 Once the Docker containers are running, you can access the services at the following URLs:
