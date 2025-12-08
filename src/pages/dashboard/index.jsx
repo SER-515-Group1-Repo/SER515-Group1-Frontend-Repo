@@ -241,6 +241,8 @@ const DashboardPage = () => {
       tasksIdentified: false,
     });
     setSelectedColumn(columnTitle);
+    console.log("columTitle", columnTitle);
+
     setIsModalOpen(true);
   };
 
