@@ -139,33 +139,6 @@ const loadFiltersLS = () => {
   }
 };
 
-const decodeUnderscore = (v) => (v ? v.replace(/_/g, " ") : "");
-const queryToFilters = (search) => {
-  const q = new URLSearchParams(search);
-  const split = (k) =>
-    q
-      .get(k)
-      ?.split(",")
-      .map((x) => decodeUnderscore(x))
-      .filter(Boolean) || [];
-  const text = decodeUnderscore(q.get("q") || "");
-  const statuses = new Set(split("status"));
-  const assignees = new Set(split("assignees"));
-  const tags = new Set(split("tags"));
-  const startDate = q.get("start") || "";
-  const endDate = q.get("end") || "";
-  if (
-    !text &&
-    !statuses.size &&
-    !assignees.size &&
-    !tags.size &&
-    !startDate &&
-    !endDate
-  )
-    return null;
-  return { text, statuses, assignees, tags, startDate, endDate };
-};
-
 const DashboardPage = () => {
   const [teamMembers, setTeamMembers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,7 +150,6 @@ const DashboardPage = () => {
   const [isSaving, setIsSaving] = useState(false); // Track if any operation is in progress
   const [operationInProgress, setOperationInProgress] = useState(null); // Track which operation
   const hasInitialLoad = useRef(false);
-  const abortControllerRef = useRef(null); // For canceling requests
   const [newIdea, setNewIdea] = useState({
     title: "",
     description: "",
@@ -478,15 +450,6 @@ const DashboardPage = () => {
         (c) => c && c.trim()
       );
 
-      // Filter out empty dependencies
-      const filteredDependencies = (newIdea.dependencies || []).filter(
-        (d) => d && d.trim()
-      );
-
-      const filteredRefinementDependencies = (
-        newIdea.refinementDependencies || []
-      ).filter((d) => d && d.trim());
-
       const payload = {
         title: newIdea.title.trim(),
         description: newIdea.description.trim(),
@@ -648,9 +611,6 @@ const DashboardPage = () => {
 
       setIsSaving(true);
       setOperationInProgress("delete");
-
-      // Store original state for rollback on error
-      const originalColumnData = JSON.parse(JSON.stringify(columnData));
 
       const response = await apiClient.delete(
         `${import.meta.env.VITE_BASE_URL}/stories/${task.id}`
