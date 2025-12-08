@@ -12,6 +12,7 @@ This repository contains the frontend codebase for the Agile Dashboard. The appl
 - **Kanban-style Dashboard:** Visualize and manage user stories across different stages (Proposed, In Refinement, etc.).
 - **Story Management:** Create, view, and filter user stories.
 - **Toast Notifications:** User-friendly feedback for API actions.
+- **Vercel:** For Deployment.
 
 ---
 
@@ -27,7 +28,13 @@ This repository contains the frontend codebase for the Agile Dashboard. The appl
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Deployment URL
+**URL:** https://515-group1.vercel.app
+- First Sign-up with new user then test out our agile requirement tool.
+
+---
+
+## 📚 Getting Started
 
 This project is designed to be run via Docker Compose alongside its backend counterpart. The following instructions will guide you through the complete setup process for the full-stack application.
 
