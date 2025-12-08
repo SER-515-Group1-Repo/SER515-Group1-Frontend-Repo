@@ -250,7 +250,7 @@ export default function NewFilterDropdown({ value = null, onApply }) {
             </div>
           </div>
 
-          {/* Date Range */}
+          {/* Date Range - Commented out
           <div className="mb-4">
             <div className="grid grid-cols-2 gap-2">
               <div className="flex flex-col gap-1">
@@ -273,6 +273,7 @@ export default function NewFilterDropdown({ value = null, onApply }) {
               </div>
             </div>
           </div>
+          */}
 
           {/* Actions */}
           <div className="flex items-center justify-between border-t pt-3">

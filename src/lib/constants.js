@@ -17,7 +17,7 @@ export const FIELD_VISIBILITY = {
   Backlog: {
     acceptanceCriteria: false,
     storyPoints: false,
-    bv: false,
+    bv: true,  // Allow setting BV in Backlog so story can move to Proposed
     refinementSessionScheduled: false,
     groomed: false,
     dependencies: false,

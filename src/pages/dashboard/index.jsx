@@ -768,6 +768,7 @@ const DashboardPage = () => {
       // Prepare payload - send only snake_case (backend standard) to avoid duplicates
       // Don't spread task to avoid duplicate fields
       // Business value is not sent - always defaults to 5
+      const taskBv = task.bv ?? task.businessValue ?? null;
       const updatePayload = {
         title: task.title,
         description: task.description,
@@ -785,7 +786,7 @@ const DashboardPage = () => {
             ? task.moscow_priority
             : task.moscowPriority,
         activity: task.activity || [],
-        bv: task.bv ?? task.businessValue ?? null,
+        bv: taskBv === 0 ? null : taskBv,  // Treat 0 as null since valid range is 1-100
         refinement_session_scheduled:
           task.refinement_session_scheduled ??
           task.refinementSessionScheduled ??
@@ -849,11 +850,25 @@ const DashboardPage = () => {
         story_points: storyPoints,
         bv: businessValue,
         moscowPriority:
-          updatedTask.moscow_priority === null ||
-          updatedTask.moscow_priority === undefined ||
-          updatedTask.moscow_priority === ""
-            ? null
-            : updatedTask.moscow_priority ?? updatedTask.moscowPriority ?? null,
+          updatedTask.moscow_priority !== null &&
+          updatedTask.moscow_priority !== undefined &&
+          updatedTask.moscow_priority !== ""
+            ? updatedTask.moscow_priority
+            : updatedTask.moscowPriority !== null &&
+              updatedTask.moscowPriority !== undefined &&
+              updatedTask.moscowPriority !== ""
+            ? updatedTask.moscowPriority
+            : null,
+        moscow_priority:
+          updatedTask.moscow_priority !== null &&
+          updatedTask.moscow_priority !== undefined &&
+          updatedTask.moscow_priority !== ""
+            ? updatedTask.moscow_priority
+            : updatedTask.moscowPriority !== null &&
+              updatedTask.moscowPriority !== undefined &&
+              updatedTask.moscowPriority !== ""
+            ? updatedTask.moscowPriority
+            : null,
         mvpScore: mvpScore,
         // Normalize validation fields for consistent access
         refinementSessionScheduled:
@@ -1073,6 +1088,8 @@ const DashboardPage = () => {
           : null;
 
       // Build update payload - send only snake_case (backend standard) to avoid duplicates
+      // Treat bv=0 as null since valid range is 1-100
+      const bvValue = updatedTask.bv ?? null;
       const updatePayload = {
         title: updatedTask.title,
         description: updatedTask.description,
@@ -1087,7 +1104,7 @@ const DashboardPage = () => {
         moscow_priority: moscowPriorityValue, // Explicitly set - null if cleared, value if set
         activity: updatedTask.activity || [],
         // Validation fields for status transitions
-        bv: updatedTask.bv ?? null,
+        bv: bvValue === 0 ? null : bvValue,
         // Needs Refinement fields
         refinement_session_scheduled:
           updatedTask.refinement_session_scheduled ??
@@ -1171,6 +1188,16 @@ const DashboardPage = () => {
         story_points: storyPoints,
         bv: businessValue,
         moscowPriority:
+          savedTask.moscow_priority !== undefined &&
+          savedTask.moscow_priority !== null &&
+          savedTask.moscow_priority !== ""
+            ? savedTask.moscow_priority
+            : savedTask.moscowPriority !== undefined &&
+              savedTask.moscowPriority !== null &&
+              savedTask.moscowPriority !== ""
+            ? savedTask.moscowPriority
+            : null,
+        moscow_priority:
           savedTask.moscow_priority !== undefined &&
           savedTask.moscow_priority !== null &&
           savedTask.moscow_priority !== ""
