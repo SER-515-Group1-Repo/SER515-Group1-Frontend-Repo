@@ -748,7 +748,7 @@ const DashboardPage = () => {
             ? task.moscow_priority
             : task.moscowPriority,
         activity: task.activity || [],
-        bv: taskBv === 0 ? null : taskBv,  // Treat 0 as null since valid range is 1-100
+        bv: taskBv === 0 ? null : taskBv, // Treat 0 as null since valid range is 1-100
         refinement_session_scheduled:
           task.refinement_session_scheduled ??
           task.refinementSessionScheduled ??
@@ -1078,6 +1078,10 @@ const DashboardPage = () => {
           updatedTask.session_documented ??
           updatedTask.sessionDocumented ??
           false,
+        refinement_dependencies:
+          updatedTask.refinement_dependencies ??
+          updatedTask.refinementDependencies ??
+          "",
         // In Refinement fields
         team_approval:
           updatedTask.team_approval ?? updatedTask.teamApproval ?? false,

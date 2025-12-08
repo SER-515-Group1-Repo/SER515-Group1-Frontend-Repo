@@ -126,7 +126,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         tags: parsedTags,
         // New validation fields - use camelCase from story or snake_case fallback
         // Treat bv=0 as null since valid range is 1-100
-        bv: story.bv === 0 ? null : (story.bv ?? null),
+        bv: story.bv === 0 ? null : story.bv ?? null,
         refinementSessionScheduled:
           story.refinementSessionScheduled ??
           story.refinement_session_scheduled ??
@@ -183,9 +183,13 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       return;
     }
     // Check if there's an empty criterion already
-    const hasEmptyCriterion = formData.acceptanceCriteria.some(c => !c || c.trim() === "");
+    const hasEmptyCriterion = formData.acceptanceCriteria.some(
+      (c) => !c || c.trim() === ""
+    );
     if (hasEmptyCriterion) {
-      alert("Please fill in the existing empty criterion before adding a new one.");
+      alert(
+        "Please fill in the existing empty criterion before adding a new one."
+      );
       return;
     }
     setFormData({
@@ -272,8 +276,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
   // Form validation - same as NewIdeaForm (only title and description required)
   const isFormValid =
-    (typeof formData.title === "string" && formData.title.trim() !== "") &&
-    (typeof formData.description === "string" && formData.description.trim() !== "") &&
+    typeof formData.title === "string" &&
+    formData.title.trim() !== "" &&
+    typeof formData.description === "string" &&
+    formData.description.trim() !== "" &&
     formData.status !== "";
 
   const handleSubmit = (e) => {
@@ -282,8 +288,10 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
     // Basic validation (title, description, status)
     if (!isFormValid) {
       const errors = {};
-      if (!formData.title || formData.title.trim() === "") errors.title = "Title is required";
-      if (!formData.description || formData.description.trim() === "") errors.description = "Description is required";
+      if (!formData.title || formData.title.trim() === "")
+        errors.title = "Title is required";
+      if (!formData.description || formData.description.trim() === "")
+        errors.description = "Description is required";
       setErrorState(errors);
       return;
     }
@@ -341,16 +349,6 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         ? formData.moscowPriority.trim()
         : null;
 
-    const storyPointsValue =
-      formData.storyPoints === null ||
-      formData.storyPoints === undefined ||
-      formData.storyPoints === "" ||
-      formData.storyPoints === 0
-        ? null
-        : typeof formData.storyPoints === "string"
-        ? parseInt(formData.storyPoints)
-        : formData.storyPoints;
-
     const submitData = {
       id: story.id, // Include id so backend knows which story to update
       title: formData.title,
@@ -379,7 +377,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
       skills_available: formData.skillsAvailable || false,
       team_commits: formData.teamCommits || false,
       tasks_identified: formData.tasksIdentified || false,
-      // Send activity - include only NEW user-added comments
+      refinement_dependencies: (formData?.refinementDependencies || []).filter(
+        (d) => d && d.trim()
+      ),
       activity: newComments,
     };
     onSave(submitData);
@@ -400,7 +400,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           required
         />
-        {errorState.title && <p className="text-red-500 text-sm col-span-4">{errorState.title}</p>}
+        {errorState.title && (
+          <p className="text-red-500 text-sm col-span-4">{errorState.title}</p>
+        )}
       </div>
 
       {/* Description */}
@@ -411,14 +413,20 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
         <textarea
           id="edit-description"
           placeholder="Describe the story"
-          className={`col-span-3 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical min-h-24 ${errorState.description ? "border-red-500" : ""}`}
+          className={`col-span-3 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-vertical min-h-24 ${
+            errorState.description ? "border-red-500" : ""
+          }`}
           value={formData.description}
           onChange={(e) =>
             setFormData({ ...formData, description: e.target.value })
           }
           required
         />
-        {errorState.description && <p className="text-red-500 text-sm col-span-4">{errorState.description}</p>}
+        {errorState.description && (
+          <p className="text-red-500 text-sm col-span-4">
+            {errorState.description}
+          </p>
+        )}
       </div>
 
       {/* Acceptance Criteria */}
@@ -473,7 +481,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
           <div className="col-span-3">
             <select
               id="edit-story-points"
-              className={`h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${errorState.storyPoints ? "border-red-500" : ""}`}
+              className={`h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                errorState.storyPoints ? "border-red-500" : ""
+              }`}
               value={formData.storyPoints ?? ""}
               onChange={(e) => {
                 const val = e.target.value;
@@ -493,7 +503,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             <p className="text-xs text-muted-foreground mt-1">
               Fibonacci sequence: 1, 2, 3, 5, 8, 13, 21
             </p>
-            {errorState.storyPoints && <p className="text-red-500 text-sm">{errorState.storyPoints}</p>}
+            {errorState.storyPoints && (
+              <p className="text-red-500 text-sm">{errorState.storyPoints}</p>
+            )}
           </div>
         </div>
       )}
@@ -527,7 +539,9 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
             <p className="text-xs text-muted-foreground mt-1">
               Required to move from Backlog to Proposed
             </p>
-            {errorState.bv && <p className="text-red-500 text-sm">{errorState.bv}</p>}
+            {errorState.bv && (
+              <p className="text-red-500 text-sm">{errorState.bv}</p>
+            )}
           </div>
         </div>
       )}
@@ -879,12 +893,16 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                 </div>
               ) : (
                 teamMembers.map((member, index) => {
-                  const isAssigned = (formData.assignees || []).includes(member.name);
+                  const isAssigned = (formData.assignees || []).includes(
+                    member.name
+                  );
                   return (
                     <div
                       key={`${member.id}-${index}`}
                       onClick={() => toggleAssignee(member.name)}
-                      className={`flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer ${isAssigned ? 'bg-primary/5' : ''}`}
+                      className={`flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer ${
+                        isAssigned ? "bg-primary/5" : ""
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -892,9 +910,17 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
                         onChange={() => {}}
                         className="h-4 w-4"
                       />
-                      <span className={`text-sm ${isAssigned ? 'font-medium text-primary' : ''}`}>
+                      <span
+                        className={`text-sm ${
+                          isAssigned ? "font-medium text-primary" : ""
+                        }`}
+                      >
                         {member.name}
-                        {isAssigned && <span className="ml-1 text-xs text-green-600">(assigned)</span>}
+                        {isAssigned && (
+                          <span className="ml-1 text-xs text-green-600">
+                            (assigned)
+                          </span>
+                        )}
                       </span>
                     </div>
                   );
