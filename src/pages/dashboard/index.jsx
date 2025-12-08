@@ -152,8 +152,8 @@ const queryToFilters = (search) => {
   const statuses = new Set(split("status"));
   const assignees = new Set(split("assignees"));
   const tags = new Set(split("tags"));
-  const startDate = q.get("start") || "";
-  const endDate = q.get("end") || "";
+  const startDate = q.get("start_date") || "";
+  const endDate = q.get("end_date") || "";
   if (
     !text &&
     !statuses.size &&
@@ -1536,10 +1536,10 @@ const DashboardPage = () => {
     if (f.text) params.push(`q=${encodeURIComponent(f.text)}`);
     if (f.statuses?.size) params.push(`status=${[...f.statuses].join(",")}`);
     if (f.assignees?.size)
-      params.push(`assignee=${[...f.assignees].join(",")}`);
+      params.push(`assignees=${[...f.assignees].join(",")}`);
     if (f.tags?.size) params.push(`tags=${[...f.tags].join(",")}`);
-    if (f.startDate) params.push(`start=${encodeURIComponent(f.startDate)}`);
-    if (f.endDate) params.push(`end=${encodeURIComponent(f.endDate)}`);
+    if (f.startDate) params.push(`start_date=${encodeURIComponent(f.startDate)}`);
+    if (f.endDate) params.push(`end_date=${encodeURIComponent(f.endDate)}`);
     const queryString = params.join("&");
     // Update the URL to reflect filters
     window.history.replaceState(

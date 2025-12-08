@@ -27,9 +27,10 @@ export function applyFilters(columns = [], filters) {
     const t = (task.title || "").toLowerCase();
     const d = (task.description || "").toLowerCase();
     const taskTags = Array.isArray(task.tags) ? task.tags : [];
-    const taskAssignee = task.assignee ?? task.assigne ?? "";
+    const taskAssignees = Array.isArray(task.assignees) ? task.assignees : [];
 
     const rawDate =
+      task.created_on ||
       task.created_at ||
       task.createdAt ||
       task.updated_at ||
@@ -40,7 +41,8 @@ export function applyFilters(columns = [], filters) {
     const taskDate = rawDate ? new Date(rawDate) : null;
 
     if (query && !(t.includes(query) || d.includes(query))) return false;
-    if (assignees?.size && !assignees.has(String(taskAssignee))) return false;
+    if (assignees?.size && !taskAssignees.some((a) => assignees.has(a)))
+      return false;
     if (tags?.size && !taskTags.some((tg) => tags.has(tg))) return false;
 
     if ((start || end) && !taskDate) return false;

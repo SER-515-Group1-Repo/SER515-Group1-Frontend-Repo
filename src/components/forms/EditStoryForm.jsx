@@ -318,7 +318,7 @@ const EditStoryForm = ({ story, onSave, teamMembers }) => {
 
     let finalActivity = [...activity];
     if (newComment.trim()) {
-      const timestamp = new Date().toLocaleString();
+      const timestamp = formatDate(new Date());
       finalActivity.push({ text: newComment.trim(), timestamp });
     }
 
